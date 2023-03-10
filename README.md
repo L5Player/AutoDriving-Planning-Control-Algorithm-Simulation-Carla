@@ -7,7 +7,10 @@
 5. 日常交流，行业咨询分享；
 <br> 
 
-<b><strong>建立这个项目的目的，是希望从零开始，搭建完整的自动驾驶系统，并且与大家共同完成<strong><b>
+<strong>建立这个项目的目的，是希望从零开始，搭建完整的自动驾驶系统，并且与大家共同完成<strong>
+<br>
+github地址: https://github.com/L5Player/AutoDriving-Planning-Control-Algorithm-Simulation-Carla<br>
+gitte地址：https://gitee.com/nannanbe/auto-driving-planning-control-algorithm-simulation-carla
 
 <br> 
 <br> 
