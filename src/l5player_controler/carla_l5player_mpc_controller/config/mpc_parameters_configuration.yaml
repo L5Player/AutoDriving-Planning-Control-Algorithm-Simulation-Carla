@@ -1,0 +1,54 @@
+mpc_lateral_longitudinal:
+  ros__parameters:
+    roadmap_path : "src/l5player_controler/carla_l5player_mpc_controller/data/2022_09_29_16_27_08_ins_data_map_after_preprocess.csv" 
+    target_speed : 5.0
+    goal_tolerance : 0.5
+    speed_P : 0.16
+    speed_I : 0.02
+    speed_D : 0.01
+
+    vehicle_ref_v: 5.0 # m/s // 只有在纯跟踪的时候才有用，和规划器联通后，车辆的w期望速度来自规划器
+
+    # vehicle_steering_ratio_double: 16.6 # ok
+    vehicle_steering_ratio_double: 22.0 # ok
+    vehicle_Lf_double: 0.95
+
+    mpc_control_horizon_length_int: 12 # okq
+    mpc_control_step_length_double: 0.1
+    mpc_former_point_of_current_position: 0 # 这个值可以将启始点向前推进一定的点的数量，但是不能太多，否则会出现找点错误的问题。
+
+    mpc_tracking_enable_bool: true
+
+    # MPC 目标函数里面可以调节的权重
+    mpc_cte_weight_int:  600 # ok
+    mpc_epsi_weight_int: 1000 # ok
+    mpc_v_weight_int: 100 # ok real 100
+    # 控制量幅值代价权重
+    mpc_steer_actuator_cost_weight_int: 400 # ok
+    mpc_acc_actuator_cost_weight_int: 100 # ok
+    # 前后两次控制量变化的代价权重
+    mpc_change_steer_cost_weight_int: 200 # ok
+    mpc_change_accel_cost_weight_int: 200 # ok
+
+    # mpc_cte_weight_int: 2000 # ok
+    # mpc_epsi_weight_int: 2000 # ok
+    # mpc_v_weight_int: 100 # ok real 100
+    # mpc_actuator_cost_weight_int: 10 # ok
+    # mpc_change_steer_cost_weight_int: 100000 # ok
+    # mpc_change_accel_cost_weight_int: 10000 # ok
+
+    # MPC 里面拟合前方参考路径的时候使用的路点的数量
+    mpc_reference_path_length: 80.0 # ok useless 
+    # 控制信号延时补偿
+    # mpc_controller_delay_compensation: 0.06
+    mpc_controller_delay_compensation: 0.12
+
+    # 在 RVIZ 里面可视化根据参考路径拟合得到的多项式表达的曲线时,显示的点的数量和点的距离参数 
+    # step on x
+    mpc_point_distance_of_reference_line_visualization: 0.5  # ok useless 
+    # how many point "int the future" to be plotted.
+    mpc_points_number_of_reference_line_visualization: 20 # ok useless
+
+    mpc_working_mode: 1 # 1: simulation 2: real vehicle.
+
+    mpc_with_planner_flag: 1   # MPC做全局纯跟踪还是与规划算法上下贯通的标志 为 0 做纯跟踪，为 1 与规划算法上下贯通 #TODO:

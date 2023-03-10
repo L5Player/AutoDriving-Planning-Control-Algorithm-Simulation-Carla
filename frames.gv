@@ -1,0 +1,18 @@
+digraph G {
+"ego_vehicle" -> "ego_vehicle/rgb_front"[label=" Broadcaster: default_authority\nAverage rate: 20.303\nBuffer length: 3.3\nMost recent transform: 230.706692\nOldest transform: 227.406692\n"];
+"map" -> "ego_vehicle"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/rgb_view"[label=" Broadcaster: default_authority\nAverage rate: 20.303\nBuffer length: 3.3\nMost recent transform: 230.706692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/lidar"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/semantic_lidar"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/radar_front"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/semantic_segmentation_front"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/depth_front"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/dvs_front"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/gnss"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"ego_vehicle" -> "ego_vehicle/imu"[label=" Broadcaster: default_authority\nAverage rate: 20.308\nBuffer length: 3.25\nMost recent transform: 230.656692\nOldest transform: 227.406692\n"];
+"gps" -> "vehicle_odometry"[label=" Broadcaster: default_authority\nAverage rate: 8.88\nBuffer length: 4.73\nMost recent transform: 1665566314.415081\nOldest transform: 1665566309.685352\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1665566314.5862174"[ shape=plaintext ] ;
+}->"gps";
+}
