@@ -7,18 +7,26 @@
 5. 日常交流，行业咨询分享；
 <br> 
 
-<strong>建立这个项目的目的，是希望从零开始，搭建完整的自动驾驶系统，并且与大家共同完成<strong>
+<b><strong>建立这个项目的目的，是希望从零开始，搭建完整的自动驾驶系统，并且与大家共同完成<strong><b>
 <br>
 github地址: https://github.com/L5Player/AutoDriving-Planning-Control-Algorithm-Simulation-Carla<br>
 gitte地址：https://gitee.com/nannanbe/auto-driving-planning-control-algorithm-simulation-carla
 
-<br> 
+
 <br> 
 
 # 首先启动Crla仿真器
 1. 在Carla下运行：./CarlaUE4.sh 或 ./CarlaUE4.sh -prefernvidia
 <br><br>
 ![carla](./figures/carla.png) 
+<br><br> 
+
+# NEW PID 模块启动流程
+0. 在PID Controler基础上更换导航路径，增加launch启动脚本以及rviz显示全局路径以及历史轨迹
+1. source source_env.sh
+2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
+3. ros2 run carla_l5player_pid_new_controller carla_l5player_pid_new_controller_node
+4. 启动节点以及rviz: ros2 launch carla_l5player_pid_new_controller new_pid_launch.py
 <br>
 
 # PID 模块启动流程
