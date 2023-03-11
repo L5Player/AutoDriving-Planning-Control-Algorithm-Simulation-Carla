@@ -12,14 +12,14 @@
 github地址: https://github.com/L5Player/AutoDriving-Planning-Control-Algorithm-Simulation-Carla<br>
 gitte地址：https://gitee.com/nannanbe/auto-driving-planning-control-algorithm-simulation-carla
 
-
+<br> 
 <br> 
 
 # 首先启动Crla仿真器
 1. 在Carla下运行：./CarlaUE4.sh 或 ./CarlaUE4.sh -prefernvidia
 <br><br>
 ![carla](./figures/carla.png) 
-<br><br> 
+<br>
 
 # NEW PID 模块启动流程
 0. 在PID Controler基础上更换导航路径，增加launch启动脚本以及rviz显示全局路径以及历史轨迹
@@ -51,5 +51,11 @@ gitte地址：https://gitee.com/nannanbe/auto-driving-planning-control-algorithm
 1. source source_env.sh
 2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
 3. ros2 launch carla_l5player_mpc_controller mpc_launch.py
+<br>
+
+# 场景仿真器启动
+首先将carla仿真器通过软连接添加到本项目同级目录下，然后进入项目目录
+1. source source_env.sh
+2. ros2 launch carla_ad_demo carla_ad_demo_with_scenario.launch.py scenario_runner_path:=/home/bea20/l5player_premium/auto-driving-planning-control-algorithm-simulation-carla/scenario_runner-0.9.13
 <br>
 

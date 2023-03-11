@@ -1,0 +1,134 @@
+# BUILD PRODUCTS
+*.d
+*.o
+*.disasm
+*.map
+*.elf
+*.hex
+*.slo
+*.lo
+*.obj
+#vslam map data is .bin, comment out
+#*.bin
+*.swp
+
+# CMAKE TEMPORARY FILES
+CMakeCache.txt
+CMakeFiles/
+CMakeFiles/*
+
+# BUILD FOLDERS
+# parking_slot_detection package depends on a folder named build,
+# commented the below to make sure the build folder can be committed.
+# ps: parking_slot_detection should be refactored in near future.
+build/
+build/*
+
+run_log/
+run_log/*
+
+install/
+install/*
+
+comfort_dataset/
+comfort_dataset/*
+log/
+log/*
+
+# ROS GENERATED PRODUCTS
+msg_gen/
+msg_gen/*
+srv_gen/
+srv_gen/*
+
+# ROS GENERATED PYTHON
+# _*.py
+_*.pyc
+*.pyc
+
+# ROS BAG FILES
+*.bag
+*.bag.active
+*.bag.orig.active
+
+# ROS LOG FILES
+*.log
+
+.catkin_tools/
+devel/
+logs/
+# XCODE BUILD PRODUCTS
+*.build/
+*.build/*
+
+# XCODE USER SETTINGS
+*.xcuserdatad/
+
+*.xcuserdatad/*
+*.pbxuser
+*.pbxuser/*
+
+# QTCREATOR PROJECT
+*.includes
+*.creator
+*.creator.user
+*.config
+*.files
+
+# GEANY PROJECTS
+*.geany
+
+# JETBRAINS
+*.idea
+
+# ZEND/ECLIPSE
+*.buildpath
+*.settings
+*.project
+*.pydevproject
+
+# MACOSX SETTINGS
+*.DS_Store
+
+# GENERATED DOCUMENTATIONss
+html_docs/
+html_docs/*
+
+# ANDROID SDK GENERATED JAVA
+gen/
+gen/*
+
+# Map cache itemsss
+
+# vscode config
+# .vscode
+# .vscode/*
+
+.vs
+
+.build_release/
+.build_debug/
+
+# ignore the loc fusion build output
+libloc_fusion.so
+build_isolate/
+devel_isolate/
+/build/
+/backup/
+slot_patch/
+
+_env.txt
+mission_control_center.log
+yada_validation_log.txt
+_ssd_output/
+libibeosdk.a
+ros-kinetic-car-cloud.sh
+
+ros_bag/
+ros_bag/*
+
+src/integrated_navigation_system_python/run_log/*
+
+*.idc
+
+src/ibeo_8l_client/record/*

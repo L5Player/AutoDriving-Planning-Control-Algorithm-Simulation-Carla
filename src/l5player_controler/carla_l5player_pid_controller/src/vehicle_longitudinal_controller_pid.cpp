@@ -11,7 +11,7 @@ using namespace std;
 static const rclcpp::Logger LOGGER = rclcpp::get_logger("carla_l5player_pid_controller_publisher");
 
 // Controller
-l5player::control::PIDController yaw_pid_controller(0.5, 0.3, 0.1);             // 转向角pid
+l5player::control::PIDController yaw_pid_controller(0.5, 0.3, 0.1);    // 转向角pid
 // l5player::control::PIDController speed_pid_controller(0.206, 0.0206, 0.515);    // 速度pid Kp Ki Kd
 l5player::control::PIDController speed_pid_controller(0.16, 0.02, 0.01);    // 速度pid Kp Ki Kd
 
@@ -30,11 +30,14 @@ VehicleControlPublisher::VehicleControlPublisher()
     cnt = 0;
     qos = 10;
 
-    vehicle_control_iteration_timer_ = this->create_wall_timer(50ms, std::bind(&VehicleControlPublisher::VehicleControlIterationCallback, this));
+    vehicle_control_iteration_timer_ =
+        this->create_wall_timer(50ms, std::bind(&VehicleControlPublisher::VehicleControlIterationCallback, this));
 
-    localization_data_subscriber = this->create_subscription<nav_msgs::msg::Odometry>("/carla/ego_vehicle/odometry", qos, std::bind(&VehicleControlPublisher::odomCallback, this, _1));
+    localization_data_subscriber = this->create_subscription<nav_msgs::msg::Odometry>(
+        "/carla/ego_vehicle/odometry", qos, std::bind(&VehicleControlPublisher::odomCallback, this, _1));
 
-    vehicle_control_publisher = this->create_publisher<carla_msgs::msg::CarlaEgoVehicleControl>("/carla/ego_vehicle/vehicle_control_cmd", qos);
+    vehicle_control_publisher =
+        this->create_publisher<carla_msgs::msg::CarlaEgoVehicleControl>("/carla/ego_vehicle/vehicle_control_cmd", qos);
     control_cmd.header.stamp = this->now();
     control_cmd.gear = 1;
     control_cmd.manual_gear_shift = false;
@@ -42,31 +45,32 @@ VehicleControlPublisher::VehicleControlPublisher()
     control_cmd.hand_brake = false;
 
     auto time_node_start = this->now();
-    vehicle_control_target_velocity_publisher = this->create_publisher<carla_msgs::msg::CarlaVehicleTargetVelocity>("/carla/ego_vehicle/target_velocity", qos);
+    vehicle_control_target_velocity_publisher =
+        this->create_publisher<carla_msgs::msg::CarlaVehicleTargetVelocity>("/carla/ego_vehicle/target_velocity", qos);
     vehicle_control_target_velocity.header.stamp = this->now();
     vehicle_control_target_velocity.velocity = 0.0;
 
-    carla_status_subscriber = this->create_subscription<carla_msgs::msg::CarlaEgoVehicleStatus>("/carla/ego_vehicle/vehicle_status", qos, std::bind(&VehicleControlPublisher::VehicleStatusCallback, this, _1));
-    
+    carla_status_subscriber = this->create_subscription<carla_msgs::msg::CarlaEgoVehicleStatus>(
+        "/carla/ego_vehicle/vehicle_status", qos, std::bind(&VehicleControlPublisher::VehicleStatusCallback, this, _1));
 
     // 读取参考线路径
     std::ifstream infile("src/l5player_controler/carla_l5player_pid_controller/data/gps_data_2022_09_09_15_18_45.csv", ios::in);    //将文件流对象与文件连接起来
     assert(infile.is_open());                                                                                                                      //若失败,则输出错误消息,并终止程序运行
-    
+
     while (getline(infile, _line)) {
         std::cout << _line << std::endl;
-        //解析每行的数据
+        // 解析每行的数据
         stringstream ss(_line);
         string _sub;
         vector<string> subArray;
-        //按照逗号分隔
+        // 按照逗号分隔
         while (getline(ss, _sub, ',')) {
             subArray.push_back(_sub);
         }
         double pt_x = std::atof(subArray[2].c_str());
         double pt_y = std::atof(subArray[3].c_str());
         double pt_v = std::atof(subArray[6].c_str());
-        
+
         v_points.push_back(pt_v);
         xy_points.push_back(std::make_pair(pt_x, pt_y));
     }
@@ -77,11 +81,13 @@ VehicleControlPublisher::VehicleControlPublisher()
     std::vector<double> accumulated_s;
     std::vector<double> kappas;
     std::vector<double> dkappas;
-    std::unique_ptr<l5player::control::ReferenceLine> reference_line = std::make_unique<l5player::control::ReferenceLine>(xy_points);
+    std::unique_ptr<l5player::control::ReferenceLine> reference_line =
+        std::make_unique<l5player::control::ReferenceLine>(xy_points);
     reference_line->ComputePathProfile(&headings, &accumulated_s, &kappas, &dkappas);
 
     for (size_t i = 0; i < headings.size(); i++) {
-        std::cout << "pt " << i << " heading: " << headings[i] << " acc_s: " << accumulated_s[i] << " kappa: " << kappas[i] << " dkappas: " << dkappas[i] << std::endl;
+        std::cout << "pt " << i << " heading: " << headings[i] << " acc_s: " << accumulated_s[i]
+                  << " kappa: " << kappas[i] << " dkappas: " << dkappas[i] << std::endl;
     }
 
     size_t _count_points = headings.size();
@@ -96,10 +102,12 @@ VehicleControlPublisher::VehicleControlPublisher()
         trajectory_pt.y = xy_points[i].second;
         if (i < _stop_begin_point) {
             trajectory_pt.v = v_points[i];
-            _index_before_stop ++;
+            _index_before_stop++;
         } else {
             if (trajectory_pt.v > 1.0) {
-                trajectory_pt.v = v_points[_index_before_stop] * ((double)i / ((double)_stop_begin_point - (double)_stop_point) - (double)_stop_point / ((double)_stop_begin_point - (double)_stop_point));
+                trajectory_pt.v = v_points[_index_before_stop] *
+                                  ((double)i / ((double)_stop_begin_point - (double)_stop_point) -
+                                   (double)_stop_point / ((double)_stop_begin_point - (double)_stop_point));
             } else {
                 trajectory_pt.v = 0;
             }
@@ -161,7 +169,6 @@ TrajectoryPoint VehicleControlPublisher::QueryNearestPointByPosition(const doubl
 - Comments    : None
 **************************************************************************************'''*/
 {
-    
     double d_min = PointDistanceSquare(trajectory_points_.front(), x, y);
     size_t index_min = 0;
 
@@ -207,8 +214,10 @@ void VehicleControlPublisher::odomCallback(nav_msgs::msg::Odometry::SharedPtr ms
     vehicle_state_.vx = msg->twist.twist.linear.x;
     vehicle_state_.vy = msg->twist.twist.linear.y;
     vehicle_state_.vz = msg->twist.twist.linear.z;
-    vehicle_state_.v = std::sqrt(vehicle_state_.vx * vehicle_state_.vx + vehicle_state_.vy * vehicle_state_.vy + vehicle_state_.vz * vehicle_state_.vz) * 3.6;    // 本车速度
-    vehicle_state_.heading = vehicle_state_.yaw;                                                                                                                  // pose.orientation是四元数
+    vehicle_state_.v = std::sqrt(vehicle_state_.vx * vehicle_state_.vx + vehicle_state_.vy * vehicle_state_.vy +
+                                 vehicle_state_.vz * vehicle_state_.vz) *
+                       3.6;                         // 本车速度
+    vehicle_state_.heading = vehicle_state_.yaw;    // pose.orientation是四元数
 }
 
 // void VehicleControlPublisher::VehicleControlIterationCallback(carla_msgs::msg::CarlaStatus::SharedPtr msg)
@@ -237,7 +246,8 @@ void VehicleControlPublisher::VehicleControlIterationCallback()
     if (cnt % 1 == 0) {
         // cout << "start_heading: " << vehicle_state_.start_heading << endl;
         // cout << "heading: " << vehicle_state_.heading << endl;
-        cout << "~~ vehicle_state_.v: " << vehicle_state_.v * 3.6 << ", target_point_.v: " << target_point_.v << ", v_err: " << v_err << endl;
+        cout << "~~ vehicle_state_.v: " << vehicle_state_.v * 3.6 << ", target_point_.v: " << target_point_.v
+             << ", v_err: " << v_err << endl;
         // cout << "yaw_err: " << yaw_err << endl;
         // cout << "control_cmd.target_wheel_angle: " << control_cmd.target_wheel_angle << endl;
     }
