@@ -28,7 +28,7 @@ from carla_msgs.msg import (
 from derived_object_msgs.msg import ObjectArray
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64  # pylint: disable=import-error
-import datetime
+
 
 class CarlaAdAgent(Agent):
     """
@@ -132,7 +132,7 @@ class CarlaAdAgent(Agent):
         """
         Executes one step of navigation.
         """
-        self.loginfo("ad_agent: {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]))
+
         # is there an obstacle in front of us?
         hazard_detected = False
 
@@ -165,7 +165,7 @@ class CarlaAdAgent(Agent):
             if light_state:
                 self._state = AgentState.BLOCKED_RED_LIGHT
                 hazard_detected = True
-        # self.loginfo("bbbb")
+
         speed_command = Float64()
         if hazard_detected:
             speed_command.data = 0.0
@@ -192,7 +192,8 @@ def main(args=None):
 
         roscomp.on_shutdown(controller.emergency_stop)
 
-        update_timer = controller.new_timer(0.01, lambda timer_event=None: controller.run_step())
+        update_timer = controller.new_timer(
+            0.05, lambda timer_event=None: controller.run_step())
 
         controller.spin()
 

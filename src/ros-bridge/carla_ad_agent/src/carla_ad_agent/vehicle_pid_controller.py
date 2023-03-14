@@ -45,7 +45,7 @@ class VehiclePIDController(object):  # pylint: disable=too-few-public-methods
         self._lon_controller = PIDLongitudinalController(**args_longitudinal)
         self._lat_controller = PIDLateralController(**args_lateral)
 
-    def run_step(self, target_speed, current_speed, current_pose, waypoint, time_now):
+    def run_step(self, target_speed, current_speed, current_pose, waypoint):
         """
         Execute one step of control invoking both lateral and longitudinal
         PID controllers to reach a target waypoint at a given target_speed.
@@ -54,11 +54,9 @@ class VehiclePIDController(object):  # pylint: disable=too-few-public-methods
         :param waypoint: target location encoded as a waypoint
         :return: control signal (throttle and steering)
         """
-        # self.login(target_speed)
         control = CarlaEgoVehicleControl()
         throttle = self._lon_controller.run_step(target_speed, current_speed)
         steering = self._lat_controller.run_step(current_pose, waypoint)
-        control.header.stamp = time_now
         control.steer = -steering
         control.throttle = throttle
         control.brake = 0.0
@@ -96,7 +94,6 @@ class PIDLongitudinalController(object):  # pylint: disable=too-few-public-metho
         :return: throttle control in the range [0, 1]
         """
         previous_error = self.error
-        print(self.error)
         self.error = target_speed - current_speed
         # restrict integral term to avoid integral windup
         self.error_integral = np.clip(self.error_integral + self.error, -40.0, 40.0)

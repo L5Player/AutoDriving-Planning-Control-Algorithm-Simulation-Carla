@@ -1,0 +1,8 @@
+new_pid_lat_longitudinal:
+  ros__parameters:
+    roadmap_path : "src/l5palyer_functions/carla_l5player_aeb_with_scenario_runner/data/2022_09_29_16_27_08_ins_data_map_after_preprocess.csv" 
+    target_speed : 5.0
+    goal_tolerance : 0.5
+    speed_P : 0.16
+    speed_I : 0.02
+    speed_D : 0.01

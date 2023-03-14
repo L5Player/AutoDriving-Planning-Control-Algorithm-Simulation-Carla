@@ -25,7 +25,6 @@ from carla_msgs.msg import CarlaEgoVehicleControl  # pylint: disable=import-erro
 from nav_msgs.msg import Odometry, Path
 from std_msgs.msg import Float64
 from visualization_msgs.msg import Marker
-import datetime
 
 
 class LocalPlanner(CompatibleNode):
@@ -46,8 +45,7 @@ class LocalPlanner(CompatibleNode):
         super(LocalPlanner, self).__init__("local_planner")
 
         role_name = self.get_param("role_name", "ego_vehicle")
-        # self.control_time_step = self.get_param("control_time_step", 0.05)
-        self.control_time_step = 0.02
+        self.control_time_step = self.get_param("control_time_step", 0.05)
 
         args_lateral_dict = {}
         args_lateral_dict['K_P'] = self.get_param("Kp_lateral", 0.9)
@@ -134,8 +132,6 @@ class LocalPlanner(CompatibleNode):
         Executes one step of local planning which involves running the longitudinal
         and lateral PID controllers to follow the waypoints trajectory.
         """
-        ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-        self.loginfo(ts)
         with self.data_lock:
             if not self._waypoint_buffer and not self._waypoints_queue:
                 self.loginfo("Waiting for a route...")
@@ -160,12 +156,8 @@ class LocalPlanner(CompatibleNode):
             self._target_pose_publisher.publish(self.pose_to_marker_msg(target_pose))
 
             # move using PID controllers
-            
-            # print("aaaaaaaaaaaa")
-            time_now = self.get_clock().now().to_msg()
-            self.loginfo(str(self._current_speed))
             control_msg = self._vehicle_controller.run_step(
-                self._target_speed, self._current_speed, self._current_pose, target_pose, time_now)
+                self._target_speed, self._current_speed, self._current_pose, target_pose)
 
             # purge the queue of obsolete waypoints
             max_index = -1
@@ -208,7 +200,7 @@ def main(args=None):
         roscomp.on_shutdown(local_planner.emergency_stop)
 
         update_timer = local_planner.new_timer(
-            0.1, lambda timer_event=None: local_planner.run_step())
+            local_planner.control_time_step, lambda timer_event=None: local_planner.run_step())
 
         local_planner.spin()
 
