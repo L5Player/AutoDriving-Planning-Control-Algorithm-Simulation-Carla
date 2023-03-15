@@ -19,7 +19,15 @@ gitte地址：https://gitee.com/nannanbe/auto-driving-planning-control-algorithm
 1. 在Carla下运行：./CarlaUE4.sh 或 ./CarlaUE4.sh -prefernvidia
 <br><br>
 ![carla](./figures/carla.png) 
-<br>
+<br><br>
+
+# LQR PID Controller with Waypoint
+0. 通过Waypoint Publisher发布轨迹并进行跟随
+1. source source_env.sh
+2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
+3. ros2 launch carla_l5player_lqr_pid_controller_waypoint lqr_launch.py
+4. ros2 launch carla_waypoint_publisher carla_waypoint_publisher.launch.py
+<br><br>
 
 # NEW PID 模块启动流程
 0. 在PID Controler基础上更换导航路径，增加launch启动脚本以及rviz显示全局路径以及历史轨迹
@@ -27,35 +35,35 @@ gitte地址：https://gitee.com/nannanbe/auto-driving-planning-control-algorithm
 2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
 3. ros2 run carla_l5player_pid_new_controller carla_l5player_pid_new_controller_node
 4. 启动节点以及rviz: ros2 launch carla_l5player_pid_new_controller new_pid_launch.py
-<br>
+<br><br>
 
 # PID 模块启动流程
 1. source source_env.sh
 2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
 3. ros2 run carla_l5player_pid_controller carla_l5player_pid_controller_node
-<br>
+<br><br>
 
 # Stanley 模块启动流程
 1. source source_env.sh
 2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
 3. ros2 run carla_l5player_stanley_pid_controller carla_l5player_stanley_pid_controller_node
-<br>
+<br><br>
 
 # LQR 模块启动流程
 1. source source_env.sh
 2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
 3. ros2 launch carla_l5player_lqr_pid_controller lqr_launch.py
-<br>
+<br><br>
 
 # MPC 模块启动流程
 1. source source_env.sh
 2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
 3. ros2 launch carla_l5player_mpc_controller mpc_launch.py
-<br>
+<br><br>
 
 # 场景仿真器启动
 首先将carla仿真器通过软连接添加到本项目同级目录下，然后进入项目目录
 1. source source_env.sh
 2. ros2 launch carla_ad_demo carla_ad_demo_with_scenario.launch.py scenario_runner_path:=/home/bea20/l5player_premium/auto-driving-planning-control-algorithm-simulation-carla/scenario_runner-0.9.13
-<br>
+<br><br>
 

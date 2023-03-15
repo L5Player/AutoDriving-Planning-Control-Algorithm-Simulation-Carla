@@ -1,0 +1,8 @@
+lqr_lateral_pid_longitudinal_waypoint:
+  ros__parameters:
+    roadmap_path : "src/l5player_controler/carla_l5player_lqr_pid_controller_waypoint/data/2022_09_29_16_27_08_ins_data_map_after_preprocess.csv" 
+    target_speed : 5.0
+    goal_tolerance : 0.5
+    speed_P : 0.16
+    speed_I : 0.02
+    speed_D : 0.01
