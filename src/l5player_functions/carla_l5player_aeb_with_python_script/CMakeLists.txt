@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(carla_l5player_aeb_with_scenario_runner)
+project(carla_l5player_aeb_with_python_script)
 
 set(vehicle_control_MAJOR_VERSION 0)
 set(vehicle_control_MINOR_VERSION 0)
@@ -19,13 +19,14 @@ find_package(geometry_msgs REQUIRED)
 find_package(carla_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(derived_object_msgs REQUIRED)
 
 add_executable(${PROJECT_NAME}_node 
                 src/vehicle_longitudinal_controller_pid.cpp 
                 src/pid_controller.cpp 
                 src/reference_line.cpp)
 
-ament_target_dependencies(${PROJECT_NAME}_node std_msgs rclcpp geometry_msgs nav_msgs carla_msgs tf2 tf2_ros)# ipopt z ssl uv uWS
+ament_target_dependencies(${PROJECT_NAME}_node std_msgs derived_object_msgs rclcpp geometry_msgs nav_msgs carla_msgs tf2 tf2_ros)# ipopt z ssl uv uWS
 
 target_compile_features(${PROJECT_NAME}_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 

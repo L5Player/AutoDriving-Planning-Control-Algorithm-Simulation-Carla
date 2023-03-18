@@ -12,11 +12,16 @@
 #include <std_msgs/msg/float32.hpp>
 #include "carla_msgs/msg/carla_vehicle_target_velocity.hpp"
 #include "carla_msgs/msg/carla_ego_vehicle_status.hpp"
+#include "derived_object_msgs/msg/object_array.hpp"
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 
 using std::placeholders::_1;
+
+#define AEB_TEST_CRUISE_SPEED ((double)100.0)
+#define AEB_BRAKE_REACTION_TIME ((double)0.525)
+#define AEB_BRAKE_DECELERATION ((double)-9.0)
 
 class VehicleControlPublisher : public rclcpp::Node
 {
@@ -98,6 +103,12 @@ public:
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr global_path_publisher_;
     nav_msgs::msg::Path global_path;
     geometry_msgs::msg::PoseStamped this_pose_stamped;
+
+    // added
+    derived_object_msgs::msg::ObjectArray carla_vehicle_objects_;
+    rclcpp::Subscription<derived_object_msgs::msg::ObjectArray>::SharedPtr carla_vehicle_object_subscriber;
+    void ObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg);
+    bool if_aeb_active_{false};
 };
 
 #endif

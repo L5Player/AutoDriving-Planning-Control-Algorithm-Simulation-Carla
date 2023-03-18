@@ -16,12 +16,12 @@ def generate_launch_description():
     # print(__file__)
     print("****************")
 
-    print(get_package_share_directory('carla_l5player_aeb_with_scenario_runner'))
+    print(get_package_share_directory('carla_l5player_aeb_with_python_script'))
     print(os.getcwd())
     
-    new_pid_parameters_configuration = os.path.join(os.getcwd(), 'src/l5palyer_functions/carla_l5player_aeb_with_scenario_runner/config', 'new_pid_parameters_configuration.yaml')
+    new_pid_parameters_configuration = os.path.join(os.getcwd(), 'src/l5player_functions/carla_l5player_aeb_with_python_script/config', 'new_pid_parameters_configuration.yaml')
 
-    rviz_config_dir = os.path.join(os.getcwd(), 'src/l5palyer_functions/carla_l5player_aeb_with_scenario_runner/rviz', 'aeb_vis.rviz')
+    rviz_config_dir = os.path.join(os.getcwd(), 'src/l5player_functions/carla_l5player_aeb_with_python_script/rviz', 'aeb_vis.rviz')
     print(new_pid_parameters_configuration)
 
     
@@ -32,9 +32,9 @@ def generate_launch_description():
             description='Prefix for node names'
         ),
         Node(
-            package='carla_l5player_aeb_with_scenario_runner',
-            executable='carla_l5player_aeb_with_scenario_runner_node',
-            name='carla_l5player_aeb_with_scenario_runner',
+            package='carla_l5player_aeb_with_python_script',
+            executable='carla_l5player_aeb_with_python_script_node',
+            name='carla_l5player_aeb_with_python_script',
             parameters=[new_pid_parameters_configuration],
             # remappings=None,
             # arguments=None,

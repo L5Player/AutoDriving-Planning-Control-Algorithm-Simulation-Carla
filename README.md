@@ -13,6 +13,14 @@ github地址: https://github.com/L5Player/AutoDriving-Planning-Control-Algorithm
 gitte地址：https://gitee.com/nannanbe/auto-driving-planning-control-algorithm-simulation-carla
 
 <br> 
+
+# 博客地址
+<b><strong>想要一起学习的伙伴，请关注我的CSDN、b站、知乎、公众号：自动驾驶Player(L5Player)<strong><b>
+<br>CSDN有系列专栏可以订阅<br>
+CSDN地址: https://blog.csdn.net/nn243823163/category_11685852.html?spm=1001.2014.3001.5482<br>
+知乎地址：https://www.zhihu.com/people/L5Player
+
+<br> 
 <br> 
 
 # 首先启动Crla仿真器
@@ -21,10 +29,18 @@ gitte地址：https://gitee.com/nannanbe/auto-driving-planning-control-algorithm
 ![carla](./figures/carla.png) 
 <br><br>
 
+# AEB function scenario design and control
+0. 通过python api设计AEB场景并实现功能
+1. source source_env.sh
+2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
+3. python vehicle_gallery_aeb.py
+4. ros2 run carla_l5player_aeb_with_python_script carla_l5player_aeb_with_python_script_node
+<br><br>
+
 # LQR PID Controller with Waypoint
 0. 通过Waypoint Publisher发布轨迹并进行跟随
 1. source source_env.sh
-2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
+2. ros2 launch carla_ros_bridge carla_ros_bridge_with_example_ego_vehicle.launch.py
 3. ros2 launch carla_l5player_lqr_pid_controller_waypoint lqr_launch.py
 4. ros2 launch carla_waypoint_publisher carla_waypoint_publisher.launch.py
 <br><br>

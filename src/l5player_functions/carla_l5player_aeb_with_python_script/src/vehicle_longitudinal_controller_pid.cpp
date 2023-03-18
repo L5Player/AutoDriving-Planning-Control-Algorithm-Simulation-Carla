@@ -18,7 +18,7 @@ l5player::control::PIDController yaw_pid_controller(0.5, 0.3, 0.1);    // 转向
 l5player::control::PIDController speed_pid_controller(0.16, 0.02, 0.01);    // 速度pid Kp Ki Kd
 
 VehicleControlPublisher::VehicleControlPublisher()
-    : Node("carla_l5player_pid_new_controller")
+    : Node("carla_l5player_aeb_with_python_script")
 /*'''**************************************************************************************
 - FunctionName: None
 - Function    : None
@@ -32,16 +32,16 @@ VehicleControlPublisher::VehicleControlPublisher()
     cnt = 0;
     qos = 10;
 
-    RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 1");
+    // RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 1");
 
     vehicle_control_iteration_timer_ =
         this->create_wall_timer(50ms, std::bind(&VehicleControlPublisher::VehicleControlIterationCallback, this));
 
     localization_data_subscriber = this->create_subscription<nav_msgs::msg::Odometry>(
-        "/carla/hero/odometry", qos, std::bind(&VehicleControlPublisher::odomCallback, this, _1));
+        "/carla/ego_vehicle/odometry", qos, std::bind(&VehicleControlPublisher::odomCallback, this, _1));
 
     vehicle_control_publisher =
-        this->create_publisher<carla_msgs::msg::CarlaEgoVehicleControl>("/carla/hero/vehicle_control_cmd", qos);
+        this->create_publisher<carla_msgs::msg::CarlaEgoVehicleControl>("/carla/ego_vehicle/vehicle_control_cmd", qos);
     control_cmd.header.stamp = this->now();
     control_cmd.gear = 1;
     control_cmd.manual_gear_shift = false;
@@ -50,26 +50,29 @@ VehicleControlPublisher::VehicleControlPublisher()
 
     auto time_node_start = this->now();
     vehicle_control_target_velocity_publisher =
-        this->create_publisher<carla_msgs::msg::CarlaVehicleTargetVelocity>("/carla/hero/target_velocity", qos);
+        this->create_publisher<carla_msgs::msg::CarlaVehicleTargetVelocity>("/carla/ego_vehicle/target_velocity", qos);
     vehicle_control_target_velocity.header.stamp = this->now();
     vehicle_control_target_velocity.velocity = 0.0;
 
     carla_status_subscriber = this->create_subscription<carla_msgs::msg::CarlaEgoVehicleStatus>(
-        "/carla/hero/vehicle_status", qos, std::bind(&VehicleControlPublisher::VehicleStatusCallback, this, _1));
+        "/carla/ego_vehicle/vehicle_status", qos, std::bind(&VehicleControlPublisher::VehicleStatusCallback, this, _1));
 
-    RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 2");
+    carla_vehicle_object_subscriber = this->create_subscription<derived_object_msgs::msg::ObjectArray>(
+        "/carla/ego_vehicle/objects", qos, std::bind(&VehicleControlPublisher::ObjectArrayCallback, this, _1));
+
+    // RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 2");
 
     // 读取参考线路径
     std::ifstream infile(
-        "src/l5player_controler/carla_l5player_pid_new_controller/data/"
+        "src/l5player_functions/carla_l5player_aeb_with_python_script/data/"
         "2022_09_29_16_27_08_ins_data_map_after_preprocess.csv",
         ios::in);                // 将文件流对象与文件连接起来
     assert(infile.is_open());    // 若失败,则输出错误消息,并终止程序运行
 
-    RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 3");
+    // RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 3");
 
     while (getline(infile, _line)) {
-        std::cout << _line << std::endl;
+        // std::cout << _line << std::endl;
         // 解析每行的数据
         stringstream ss(_line);
         string _sub;
@@ -80,7 +83,9 @@ VehicleControlPublisher::VehicleControlPublisher()
         }
         double pt_x = std::atof(subArray[2].c_str());
         double pt_y = std::atof(subArray[3].c_str());
-        double pt_v = static_cast<double>(20.0);
+
+        // 设置巡航车速
+        double pt_v = static_cast<double>(AEB_TEST_CRUISE_SPEED);
 
         v_points.push_back(pt_v);
         xy_points.push_back(std::make_pair(pt_x, pt_y));
@@ -97,8 +102,8 @@ VehicleControlPublisher::VehicleControlPublisher()
     reference_line->ComputePathProfile(&headings, &accumulated_s, &kappas, &dkappas);
 
     for (size_t i = 0; i < headings.size(); i++) {
-        std::cout << "pt " << i << " heading: " << headings[i] << " acc_s: " << accumulated_s[i]
-                  << " kappa: " << kappas[i] << " dkappas: " << dkappas[i] << std::endl;
+        // std::cout << "pt " << i << " heading: " << headings[i] << " acc_s: " << accumulated_s[i]
+        //           << " kappa: " << kappas[i] << " dkappas: " << dkappas[i] << std::endl;
     }
 
     size_t _count_points = headings.size();
@@ -159,6 +164,40 @@ VehicleControlPublisher::VehicleControlPublisher()
     tf_broadcaster_gps_vehicle = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 }
 
+void VehicleControlPublisher::ObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg) {
+    const auto &objects = msg->objects;
+    if (objects.size() != (size_t)0) {
+        // std::cout << "find object" << std::endl;
+    } else {
+        std::cout << "not find object" << std::endl;
+        return;
+    }
+    const double object_x = objects.at(0).pose.position.x;
+    const double object_y = objects.at(0).pose.position.y;
+
+    // std::cout << "object x : " << objects.at(0).pose.position.x << std::endl;
+    // std::cout << "object y : " << objects.at(0).pose.position.y << std::endl;
+    // std::cout << "vehicle_state_.x : " << vehicle_state_.x << std::endl;
+    // std::cout << "vehicle_state_.y : " << vehicle_state_.y << std::endl;
+    // std::cout << "vehicle_state_.v : " << vehicle_state_.v << std::endl;
+    // std::cout << "vehicle_state_.acceleration : " << vehicle_state_.acceleration << std::endl;
+
+    double dist_x = abs(object_x - vehicle_state_.x);
+    double dist_y = abs(object_y - vehicle_state_.y);
+    const double object_dist = sqrt(pow(dist_x, (double)2.0) + pow(dist_y, (double)2.0));
+    double reaction_time = AEB_BRAKE_REACTION_TIME;
+    double safe_dist = vehicle_state_.v * reaction_time +
+                       (double)0.5 * vehicle_state_.acceleration * pow(AEB_BRAKE_REACTION_TIME, (double)2.0);
+
+    if (safe_dist > object_dist) {
+        if_aeb_active_ = true;
+        std::cout << "AEB DECELERATION(m/s2) : " << -control_cmd.brake << std::endl;
+    }
+    if (if_aeb_active_ && abs(vehicle_state_.v - (double)0.0) < (double)0.001) {
+        std::cout << "AEB stop distance: " << object_dist - (double)1.5 << std::endl;
+    }
+}
+
 void VehicleControlPublisher::GlobalPathPublishCallback()
 /*'''**************************************************************************************
 - FunctionName: None
@@ -191,6 +230,7 @@ void VehicleControlPublisher::VehicleStatusCallback(carla_msgs::msg::CarlaEgoVeh
 **************************************************************************************'''*/
 {
     vehicle_control_target_velocity.header.stamp = msg->header.stamp;
+    vehicle_state_.acceleration = msg->acceleration.linear.x;
 }
 
 double VehicleControlPublisher::PointDistanceSquare(const TrajectoryPoint &point, const double x, const double y)
@@ -327,8 +367,8 @@ void VehicleControlPublisher::VehicleControlIterationCallback()
     if (cnt % 1 == 0) {
         // cout << "start_heading: " << vehicle_state_.start_heading << endl;
         // cout << "heading: " << vehicle_state_.heading << endl;
-        cout << "~~ vehicle_state_.v: " << vehicle_state_.v * 3.6 << ", target_point_.v: " << target_point_.v
-             << ", v_err: " << v_err << endl;
+        // cout << "~~ vehicle_state_.v: " << vehicle_state_.v * 3.6 << ", target_point_.v: " << target_point_.v
+        //      << ", v_err: " << v_err << endl;
         // cout << "yaw_err: " << yaw_err << endl;
         // cout << "control_cmd.target_wheel_angle: " << control_cmd.target_wheel_angle << endl;
     }
@@ -360,6 +400,11 @@ void VehicleControlPublisher::VehicleControlIterationCallback()
     control_cmd.hand_brake = false;
     control_cmd.manual_gear_shift = false;
 
+    if (if_aeb_active_ == true) {
+        control_cmd.brake = -AEB_BRAKE_DECELERATION;
+        control_cmd.throttle = 0;
+    }
+
     vehicle_control_publisher->publish(control_cmd);
 
     // vehicle_control_target_velocity.header.stamp = this->now();
@@ -377,7 +422,7 @@ int main(int argc, char **argv)
 - Comments    : None
 **************************************************************************************'''*/
 {
-    RCLCPP_INFO(LOGGER, "Initialize node");
+    // RCLCPP_INFO(LOGGER, "Initialize node");
 
     rclcpp::init(argc, argv);
 
