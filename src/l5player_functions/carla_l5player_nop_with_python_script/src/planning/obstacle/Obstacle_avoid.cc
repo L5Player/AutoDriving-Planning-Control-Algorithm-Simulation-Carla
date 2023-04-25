@@ -13,10 +13,10 @@ Obstacle_avoid::Obstacle_avoid() {
     // Points_Visualization = nh_.advertise<visualization_msgs::MarkerArray>("pinnacle_points", 10);
 
     // ros2
-    node_obstacle_ = std::make_shared<rclcpp::Node>("ObstacleInfo");
-    Pinnacle_Visualization = node_obstacle_->create_publisher<visualization_msgs::msg::Marker>("/history_path", 2);
-    Points_Visualization =
-        node_obstacle_->create_publisher<visualization_msgs::msg::MarkerArray>("pinnacle_points", 10);
+    // node_obstacle_ = std::make_shared<rclcpp::Node>("ObstacleInfo");
+    // Pinnacle_Visualization = node_obstacle_->create_publisher<visualization_msgs::msg::Marker>("/history_path", 2);
+    // Points_Visualization =
+    //     node_obstacle_->create_publisher<visualization_msgs::msg::MarkerArray>("pinnacle_points", 10);
 }
 Obstacle_avoid::Obstacle_avoid(Eigen::Vector3d &origin_mgrs_point) { origin_mgrs_point_ = origin_mgrs_point; }
 
@@ -107,106 +107,106 @@ bool Obstacle_avoid::Inside_rectangle(PPoint p1, PPoint p2, PPoint p3, PPoint p4
 
 // 障碍物有效区域显示
 void Obstacle_avoid::visualization(PPoint center, double ego_heading, double length, double width) {
-    visualization_msgs::msg::Marker marker;
-    tf2::Quaternion myQuaternion;
-    myQuaternion.setRPY((double)0.0, (double)0.0, (double)(ego_heading - M_PI / 2.0));
-    marker.pose.orientation.set__w(myQuaternion.getW());
-    marker.pose.orientation.set__x(myQuaternion.getX());
-    marker.pose.orientation.set__y(myQuaternion.getY());
-    marker.pose.orientation.set__z(myQuaternion.getZ());
-    marker.header.frame_id = "planning";
-    marker.header.stamp = node_obstacle_->get_clock()->now();
-    marker.ns = "basic_shapes";
-    marker.id = 0;    // 注意了
-    marker.type = visualization_msgs::msg::Marker::CUBE;
-    marker.action = visualization_msgs::msg::Marker::ADD;
-    marker.pose.position.x = center.x;
-    marker.pose.position.y = center.y;
-    marker.pose.position.z = 0;
-    marker.scale.x = width;
-    marker.scale.y = length;
-    marker.scale.z = 0.0;
-    marker.color.r = 1.0f;
-    marker.color.g = 0.0f;
-    marker.color.g = 0.0f;
-    marker.color.g = 0.0f;
-    marker.color.g = 0.0f;
-    marker.color.b = 0.0f;
-    marker.color.a = 0.2;
-    // marker.lifetime = rclcpp::Duration::Duration();
-    Pinnacle_Visualization->publish(marker);
+    // visualization_msgs::msg::Marker marker;
+    // tf2::Quaternion myQuaternion;
+    // myQuaternion.setRPY((double)0.0, (double)0.0, (double)(ego_heading - M_PI / 2.0));
+    // marker.pose.orientation.set__w(myQuaternion.getW());
+    // marker.pose.orientation.set__x(myQuaternion.getX());
+    // marker.pose.orientation.set__y(myQuaternion.getY());
+    // marker.pose.orientation.set__z(myQuaternion.getZ());
+    // marker.header.frame_id = "planning";
+    // marker.header.stamp = node_obstacle_->get_clock()->now();
+    // marker.ns = "basic_shapes";
+    // marker.id = 0;    // 注意了
+    // marker.type = visualization_msgs::msg::Marker::CUBE;
+    // marker.action = visualization_msgs::msg::Marker::ADD;
+    // marker.pose.position.x = center.x;
+    // marker.pose.position.y = center.y;
+    // marker.pose.position.z = 0;
+    // marker.scale.x = width;
+    // marker.scale.y = length;
+    // marker.scale.z = 0.0;
+    // marker.color.r = 1.0f;
+    // marker.color.g = 0.0f;
+    // marker.color.g = 0.0f;
+    // marker.color.g = 0.0f;
+    // marker.color.g = 0.0f;
+    // marker.color.b = 0.0f;
+    // marker.color.a = 0.2;
+    // // marker.lifetime = rclcpp::Duration::Duration();
+    // Pinnacle_Visualization->publish(marker);
 }
 
 // 显示障碍物顶点
 void Obstacle_avoid::visualization_points(PPoint ob_left_front, PPoint ob_left_buttom, PPoint ob_right_front,
                                           PPoint ob_right_buttom) {
-    std::vector<PPoint> ob_vector;
-    ob_vector.emplace_back(ob_left_front);
-    ob_vector.emplace_back(ob_left_buttom);
-    ob_vector.emplace_back(ob_right_front);
-    ob_vector.emplace_back(ob_right_buttom);
+    // std::vector<PPoint> ob_vector;
+    // ob_vector.emplace_back(ob_left_front);
+    // ob_vector.emplace_back(ob_left_buttom);
+    // ob_vector.emplace_back(ob_right_front);
+    // ob_vector.emplace_back(ob_right_buttom);
 
-    visualization_msgs::msg::MarkerArray markerarray1;
-    for (size_t i = 0; i < ob_vector.size(); i++) {
-        visualization_msgs::msg::Marker marker;
-        tf2::Quaternion myQuaternion;
-        myQuaternion.setRPY((double)0.0, (double)0.0, (double)(0.0));
-        marker.pose.orientation.set__w(myQuaternion.getW());
-        marker.pose.orientation.set__x(myQuaternion.getX());
-        marker.pose.orientation.set__y(myQuaternion.getY());
-        marker.pose.orientation.set__z(myQuaternion.getZ());
-        marker.header.frame_id = "world";
-        marker.header.stamp = node_obstacle_->get_clock()->now();
-        marker.ns = "basic_shapes";
-        marker.id = i;    // 注意了
-        marker.type = visualization_msgs::msg::Marker::CYLINDER;
-        marker.action = visualization_msgs::msg::Marker::ADD;
-        marker.pose.position.x = ob_vector[i].x;
-        marker.pose.position.y = ob_vector[i].y;
-        marker.pose.position.z = 0;
-        marker.scale.x = 0.2;
-        marker.scale.y = 0.2;
-        marker.scale.z = 0.0;
-        if (i == 0) {
-            marker.color.r = 1.0f;
-            marker.color.g = 0.0f;
-            marker.color.b = 0.0f;
-        } else if (i == 1) {
-            marker.color.r = 0.0f;
-            marker.color.g = 1.0f;
-            marker.color.b = 0.0f;
-        } else if (i == 2) {
-            marker.color.r = 1.0f;
-            marker.color.g = 0.0f;
-            marker.color.b = 1.0f;
-        } else if (i == 3) {
-            marker.color.r = 0.0f;
-            marker.color.g = 0.0f;
-            marker.color.b = 1.0f;
-        }
+    // visualization_msgs::msg::MarkerArray markerarray1;
+    // for (size_t i = 0; i < ob_vector.size(); i++) {
+    //     visualization_msgs::msg::Marker marker;
+    //     tf2::Quaternion myQuaternion;
+    //     myQuaternion.setRPY((double)0.0, (double)0.0, (double)(0.0));
+    //     marker.pose.orientation.set__w(myQuaternion.getW());
+    //     marker.pose.orientation.set__x(myQuaternion.getX());
+    //     marker.pose.orientation.set__y(myQuaternion.getY());
+    //     marker.pose.orientation.set__z(myQuaternion.getZ());
+    //     marker.header.frame_id = "world";
+    //     marker.header.stamp = node_obstacle_->get_clock()->now();
+    //     marker.ns = "basic_shapes";
+    //     marker.id = i;    // 注意了
+    //     marker.type = visualization_msgs::msg::Marker::CYLINDER;
+    //     marker.action = visualization_msgs::msg::Marker::ADD;
+    //     marker.pose.position.x = ob_vector[i].x;
+    //     marker.pose.position.y = ob_vector[i].y;
+    //     marker.pose.position.z = 0;
+    //     marker.scale.x = 0.2;
+    //     marker.scale.y = 0.2;
+    //     marker.scale.z = 0.0;
+    //     if (i == 0) {
+    //         marker.color.r = 1.0f;
+    //         marker.color.g = 0.0f;
+    //         marker.color.b = 0.0f;
+    //     } else if (i == 1) {
+    //         marker.color.r = 0.0f;
+    //         marker.color.g = 1.0f;
+    //         marker.color.b = 0.0f;
+    //     } else if (i == 2) {
+    //         marker.color.r = 1.0f;
+    //         marker.color.g = 0.0f;
+    //         marker.color.b = 1.0f;
+    //     } else if (i == 3) {
+    //         marker.color.r = 0.0f;
+    //         marker.color.g = 0.0f;
+    //         marker.color.b = 1.0f;
+    //     }
 
-        marker.color.a = 1.0;
-        // marker.lifetime = ros::Duration();
-        markerarray1.markers.push_back(marker);
-    }
-    Points_Visualization->publish(markerarray1);
+    //     marker.color.a = 1.0;
+    //     // marker.lifetime = ros::Duration();
+    //     markerarray1.markers.push_back(marker);
+    // }
+    // // Points_Visualization->publish(markerarray1);
 }
 
 // 发布移动的参考线并显示
 void Obstacle_avoid::Publish(std::pair<std::vector<double>, std::vector<double>> &move_referenceline) {
-    referenceline.poses.clear();
-    referenceline.header.frame_id = "world";
-    referenceline.header.stamp = node_obstacle_->get_clock()->now();
-    geometry_msgs::msg::PoseStamped pose_stamp;
-    pose_stamp.header.frame_id = "world";
-    pose_stamp.header.stamp = node_obstacle_->get_clock()->now();
+    // referenceline.poses.clear();
+    // referenceline.header.frame_id = "world";
+    // referenceline.header.stamp = node_obstacle_->get_clock()->now();
+    // geometry_msgs::msg::PoseStamped pose_stamp;
+    // pose_stamp.header.frame_id = "world";
+    // pose_stamp.header.stamp = node_obstacle_->get_clock()->now();
 
-    for (int i = 0; i < move_referenceline.first.size(); i++) {
-        pose_stamp.pose.position.x = move_referenceline.first[i];
-        pose_stamp.pose.position.y = move_referenceline.second[i];
-        pose_stamp.pose.position.z = 0;
-        referenceline.poses.push_back(pose_stamp);
-    }
+    // for (int i = 0; i < move_referenceline.first.size(); i++) {
+    //     pose_stamp.pose.position.x = move_referenceline.first[i];
+    //     pose_stamp.pose.position.y = move_referenceline.second[i];
+    //     pose_stamp.pose.position.z = 0;
+    //     referenceline.poses.push_back(pose_stamp);
+    // }
     // referenceline_pub.publish(referenceline); //只能发布一次
 }
 

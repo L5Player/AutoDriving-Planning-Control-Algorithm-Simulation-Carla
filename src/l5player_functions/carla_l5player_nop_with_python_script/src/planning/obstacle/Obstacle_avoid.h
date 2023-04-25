@@ -49,8 +49,8 @@ private:
   PPoint p;
   nav_msgs::msg::Path referenceline;
   // rclcpp::Publisher referenceline_pub;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr Points_Visualization;
-  std::shared_ptr<rclcpp::Node> node_obstacle_;
+  // rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr Points_Visualization;
+  // std::shared_ptr<rclcpp::Node> node_obstacle_;
 
 public:
   Obstacle_avoid();

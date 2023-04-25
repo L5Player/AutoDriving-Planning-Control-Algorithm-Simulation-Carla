@@ -7,10 +7,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 
-
 using namespace std;
 
-using namespace l5player::planning;
+// using namespace l5player::planning;
 
 static const rclcpp::Logger LOGGER = rclcpp::get_logger("carla_l5player_pid_new_controller_publisher");
 
@@ -37,14 +36,14 @@ VehicleControlPublisher::VehicleControlPublisher()
     switch (which_planners) {
         case 0:
             std::cout << "lattice planning!!!" << std::endl;
-            planning_base_ = std::make_shared<lattice>();
+            planning_base_ = std::make_shared<l5player::planning::lattice>();
             break;
         case 1:
 
             break;
         default:
             std::cout << "default:lattice planning!!!" << std::endl;
-            planning_base_ = std::make_shared<lattice>();
+            planning_base_ = std::make_shared<l5player::planning::lattice>();
             break;
     }
 
@@ -74,18 +73,17 @@ VehicleControlPublisher::VehicleControlPublisher()
         "/carla/ego_vehicle/vehicle_status", qos, std::bind(&VehicleControlPublisher::VehicleStatusCallback, this, _1));
 
     carla_vehicle_object_subscriber = this->create_subscription<derived_object_msgs::msg::ObjectArray>(
-        "/carla/ego_vehicle/objects", qos, std::bind(&VehicleControlPublisher::ObjectArrayCallback, this, _1));
+        "/carla/ego_vehicle/objects", qos, std::bind(&VehicleControlPublisher::SetObjectArrayCallback, this, _1));
 
     // RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 2");
 
     // 读取参考线路径
     std::ifstream infile(
-        "src/l5player_functions/carla_l5player_nop_with_python_script/data/"
+        "/home/bea20/l5player_premium/auto-driving-planning-control-algorithm-simulation-carla/src/l5player_functions/"
+        "carla_l5player_nop_with_python_script/data/"
         "2022_09_29_16_27_08_ins_data_map_after_preprocess.csv",
         ios::in);                // 将文件流对象与文件连接起来
     assert(infile.is_open());    // 若失败,则输出错误消息,并终止程序运行
-
-    // RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 3");
 
     while (getline(infile, _line)) {
         // std::cout << _line << std::endl;
@@ -108,76 +106,300 @@ VehicleControlPublisher::VehicleControlPublisher()
     }
     infile.close();
 
-    // Construct the reference_line path profile
-    std::vector<double> headings;
-    std::vector<double> accumulated_s;
-    std::vector<double> kappas;
-    std::vector<double> dkappas;
-    std::unique_ptr<l5player::control::ReferenceLine> reference_line =
-        std::make_unique<l5player::control::ReferenceLine>(xy_points);
-    reference_line->ComputePathProfile(&headings, &accumulated_s, &kappas, &dkappas);
-
-    for (size_t i = 0; i < headings.size(); i++) {
-        // std::cout << "pt " << i << " heading: " << headings[i] << " acc_s: " << accumulated_s[i]
-        //           << " kappa: " << kappas[i] << " dkappas: " << dkappas[i] << std::endl;
+    // 平滑整个导航路径的参考线
+    routing_waypoints_ = Eigen::MatrixXd::Zero(xy_points.size(), 3);
+    for (size_t i = 0; i < xy_points.size(); ++i) {
+        routing_waypoints_(i, 0) = xy_points.at(i).first;
+        routing_waypoints_(i, 1) = xy_points.at(i).second;
+        routing_waypoints_(i, 2) = (double)0.0;
     }
+    rl_.referenceLine_split(routing_waypoints_);
 
-    size_t _count_points = headings.size();
-    size_t _stop_begin_point = ceil(_count_points * 0.85);
-    size_t _stop_point = ceil(_count_points * 0.95);
-    std::cout << "slow down points:" << _stop_begin_point << "  " << _stop_point << std::endl;
-
-    int _index_before_stop = 0;
-    for (size_t i = 0; i < headings.size(); i++) {
-        TrajectoryPointOri trajectory_pt;
-        trajectory_pt.x = xy_points[i].first;
-        trajectory_pt.y = xy_points[i].second;
-        if (i < _stop_begin_point) {
-            trajectory_pt.v = v_points[i];
-            _index_before_stop++;
-        } else {
-            if (trajectory_pt.v > 1.0) {
-                trajectory_pt.v = v_points[_index_before_stop] *
-                                  ((double)i / ((double)_stop_begin_point - (double)_stop_point) -
-                                   (double)_stop_point / ((double)_stop_begin_point - (double)_stop_point));
-            } else {
-                trajectory_pt.v = 0;
-            }
-        }
-        trajectory_pt.a = 0.0;
-        trajectory_pt.heading = headings[i];
-        trajectory_pt.kappa = kappas[i];
-
-        planning_published_trajectory.trajectory_points.push_back(trajectory_pt);
-
-        // publish for rviz
-        this_pose_stamped.header.frame_id = "gps";
-        this_pose_stamped.header.stamp = this->get_clock()->now();
-        this_pose_stamped.pose.position.x = xy_points[i].first;
-        this_pose_stamped.pose.position.y = xy_points[i].second;
-        this_pose_stamped.pose.position.z = 0;
-        this_pose_stamped.pose.orientation.x = 0;
-        this_pose_stamped.pose.orientation.y = 0;
-        this_pose_stamped.pose.orientation.z = 0;
-        this_pose_stamped.pose.orientation.w = 0;    // 这里实际上是放的frenet坐标系的S
-
-        global_path.poses.push_back(this_pose_stamped);
-        global_path.header.frame_id = "gps";
-    }
-
-    trajectory_points_ = planning_published_trajectory.trajectory_points;
+    auto referenceline_ptr = rl_.get_referenceline();
+    rl_.referencePointsCalc(*referenceline_ptr);    // 计算参考点的kappa、theta，确保只计算一次，减少重复计算
 
     acceleration_cmd = 0.0;
     steer_cmd = 0.0;
 
     global_path_publisher_ = this->create_publisher<nav_msgs::msg::Path>("/global_reference_path", 2);
     history_path_visualization_publisher = this->create_publisher<nav_msgs::msg::Path>("/history_path", 2);
+    rviz_obstacle_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/l5player_nop/obstacle", 2);
 
     global_path_publish_timer =
         this->create_wall_timer(500ms, std::bind(&VehicleControlPublisher::GlobalPathPublishCallback, this));
 
     // Initialize the transform broadcaster
     tf_broadcaster_gps_vehicle = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+}
+
+void VehicleControlPublisher::NopRunOnce() {
+    // 障碍物存储
+    std::vector<const Obstacle *> obstacles;    // Apollo是这种类型
+    for (size_t i = 0; i < AllObstacle.size(); ++i) {
+        obstacles.emplace_back(&AllObstacle.at(i));
+    }
+
+    // 障碍物发布rviz
+    if (obstacles.size() > 0) {
+        visualization_msgs::msg::MarkerArray obstacle_MarkerArray;
+        for (int i = 0; i < obstacles.size(); ++i) {
+            visualization_msgs::msg::Marker marker;
+            Turn_obstacles_into_squares(marker, obstacles[i], i);
+            obstacle_MarkerArray.markers.push_back(marker);
+        }
+        rviz_obstacle_pub_->publish(obstacle_MarkerArray);
+    }
+
+    auto reference_points_ptr = rl_.GetReferencePoints();
+
+    if (reference_points_ptr->size() > 0) {
+        double current_time = this->get_clock()->now().seconds();
+        std::vector<TrajectoryPoint> stitching_trajectory = rl_.plan_start_point(current_time);
+        PlanningTarget planning_target(Config_.default_cruise_speed, rl_.accumulated_s);    // 目标m/s
+        rl_.lon_decision_horizon = rl_.accumulated_s.back();
+        rl_.best_path_ = planning_base_->plan(stitching_trajectory.back(), planning_target, obstacles,
+                                              rl_.accumulated_s, *reference_points_ptr, rl_.FLAGS_lateral_optimization,
+                                              rl_.init_relative_time, rl_.lon_decision_horizon, rl_.plan_start_time);
+
+        // ROS_INFO("current_time %f", current_time);
+        // ROS_INFO("plan_start_time = %f", plan_start_time);
+        std::cout << "cruise speed: " << Config_.default_cruise_speed << std::endl;
+
+        std::cout << "current_time: " << std::fixed << current_time << "  plan_start_time: " << std::fixed
+                  << rl_.plan_start_time << std::endl;
+
+        rl_.pre_trajectory_.clear();
+        rl_.pre_trajectory_.insert(
+            rl_.pre_trajectory_.end(), stitching_trajectory.begin(),
+            stitching_trajectory.end() - 1);    // 规划起点被同时包含在了stitching和best_path中，因此需要减1
+        // ROS_INFO("stitch_.size = %i", stitching_trajectory.size());
+        // ROS_INFO("stitch_pre_trajectory_.size = %i", pre_trajectory_.size());
+        rl_.pre_trajectory_.insert(rl_.pre_trajectory_.end(), rl_.best_path_.begin(), rl_.best_path_.end());
+        // ROS_INFO("best_stitch_pre_trajectory_.size = %i", pre_trajectory_.size());
+
+        // for (int i = 0; i < pre_trajectory_.size();++i){
+        //   ROS_INFO("relative_time_%i = %f absolute_time = %f", i, pre_trajectory_[i].relative_time,
+        //   pre_trajectory_[i].absolute_time);
+        // }
+
+        // 发布轨迹
+        DiscretizedTrajectory &pre_trajectory_ = rl_.pre_trajectory_;
+        l5player_nop_msgs::msg::Trajectory trajectory_d;
+        trajectory_d.trajectorypoint.clear();
+        trajectory_d.pointsize = pre_trajectory_.size();
+        for (int i = 0; i < pre_trajectory_.size(); ++i) {
+            l5player_nop_msgs::msg::TrajectoryPoint TrajectoryPoint_d;
+            TrajectoryPoint_d.x = pre_trajectory_[i].x;
+            TrajectoryPoint_d.y = pre_trajectory_[i].y;
+            TrajectoryPoint_d.z = pre_trajectory_[i].z;
+            TrajectoryPoint_d.theta = pre_trajectory_[i].theta;
+            TrajectoryPoint_d.kappa = pre_trajectory_[i].kappa;
+            TrajectoryPoint_d.dkappa = pre_trajectory_[i].dkappa;
+            TrajectoryPoint_d.v = pre_trajectory_[i].v;
+            TrajectoryPoint_d.a = pre_trajectory_[i].a;
+            TrajectoryPoint_d.relative_time = pre_trajectory_[i].relative_time;
+            TrajectoryPoint_d.absolute_time = pre_trajectory_[i].absolute_time;
+            TrajectoryPoint_d.d = pre_trajectory_[i].d;
+            TrajectoryPoint_d.d_d = pre_trajectory_[i].d_d;
+            TrajectoryPoint_d.d_dd = pre_trajectory_[i].d_dd;
+            TrajectoryPoint_d.s = pre_trajectory_[i].s;
+            TrajectoryPoint_d.s_d = pre_trajectory_[i].s_d;
+            TrajectoryPoint_d.s_dd = pre_trajectory_[i].s_dd;
+            TrajectoryPoint_d.s_ddd = pre_trajectory_[i].s_ddd;
+            TrajectoryPoint_d.d_ddd = pre_trajectory_[i].d_ddd;
+            trajectory_d.trajectorypoint.emplace_back(TrajectoryPoint_d);
+        }
+
+        rl_.traj_points_.poses.clear();
+        rl_.traj_points_.header.frame_id = "world";
+        rl_.traj_points_.header.stamp = this->get_clock()->now();
+        for (int i = 0; i < pre_trajectory_.size(); ++i) {
+            geometry_msgs::msg::PoseStamped pose_stamp;
+            pose_stamp.header.frame_id = "world";
+            pose_stamp.header.stamp = this->get_clock()->now();
+            pose_stamp.pose.position.x = pre_trajectory_[i].x;
+            pose_stamp.pose.position.y = pre_trajectory_[i].y;
+            pose_stamp.pose.position.z = 0;
+            rl_.traj_points_.poses.push_back(pose_stamp);
+        }
+
+        // Construct the reference_line path profile
+        std::vector<double> headings;
+        std::vector<double> accumulated_s;
+        std::vector<double> kappas;
+        std::vector<double> dkappas;
+        v_points.clear();
+
+        for (size_t i = 0; i < pre_trajectory_.size(); i++) {
+            headings.emplace_back(pre_trajectory_.at(i).theta);
+            accumulated_s.emplace_back(pre_trajectory_.at(i).s);
+            kappas.emplace_back(pre_trajectory_.at(i).kappa);
+            dkappas.emplace_back(pre_trajectory_.at(i).dkappa);
+            v_points.emplace_back(pre_trajectory_.at(i).v);
+        }
+
+        size_t _count_points = headings.size();
+        size_t _stop_begin_point = ceil(_count_points * 0.85);
+        size_t _stop_point = ceil(_count_points * 0.95);
+        std::cout << "slow down points:" << _stop_begin_point << "  " << _stop_point << std::endl;
+
+        int _index_before_stop = 0;
+        for (size_t i = 0; i < headings.size(); i++) {
+            TrajectoryPointOri trajectory_pt;
+            trajectory_pt.x = xy_points[i].first;
+            trajectory_pt.y = xy_points[i].second;
+            if (i < _stop_begin_point) {
+                trajectory_pt.v = v_points[i];
+                _index_before_stop++;
+            } else {
+                if (trajectory_pt.v > 1.0) {
+                    trajectory_pt.v = v_points[_index_before_stop] *
+                                      ((double)i / ((double)_stop_begin_point - (double)_stop_point) -
+                                       (double)_stop_point / ((double)_stop_begin_point - (double)_stop_point));
+                } else {
+                    trajectory_pt.v = 0;
+                }
+            }
+            trajectory_pt.a = 0.0;
+            trajectory_pt.heading = headings[i];
+            trajectory_pt.kappa = kappas[i];
+
+            planning_published_trajectory.trajectory_points.push_back(trajectory_pt);
+
+            // publish for rviz
+            this_pose_stamped.header.frame_id = "gps";
+            this_pose_stamped.header.stamp = this->get_clock()->now();
+            this_pose_stamped.pose.position.x = xy_points[i].first;
+            this_pose_stamped.pose.position.y = xy_points[i].second;
+            this_pose_stamped.pose.position.z = 0;
+            this_pose_stamped.pose.orientation.x = 0;
+            this_pose_stamped.pose.orientation.y = 0;
+            this_pose_stamped.pose.orientation.z = 0;
+            this_pose_stamped.pose.orientation.w = 0;    // 这里实际上是放的frenet坐标系的S
+
+            global_path.poses.push_back(this_pose_stamped);
+            global_path.header.frame_id = "gps";
+        }
+
+        trajectory_points_ = planning_published_trajectory.trajectory_points;
+        std::cout << "first trajectory_points !!!!! : "
+                  << " x: " << trajectory_points_.at(14).x << " y: " << trajectory_points_.at(14).y
+                  << " v: " << trajectory_points_.at(14).v << std::endl;
+    }
+}
+
+void VehicleControlPublisher::SetObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg) {
+    const auto &objects = msg->objects;
+    // 存到AllObstacle
+    AllObstacle.clear();
+    if (objects.size() > (size_t)0) {
+        for (size_t i = 0; i < objects.size(); ++i) {
+            Obstacle obs;
+            /*-------------------------------------每种形状都有的基本信息----------------------------------------*/
+            // 中心点
+            obs.centerpoint.position.x = objects.at(i).pose.position.x;
+            obs.centerpoint.position.y = objects.at(i).pose.position.y;
+            obs.centerpoint.position.z = (double)0.0;    // 压缩二维
+
+            obs.obstacle_id = objects.at(i).id;                  // id
+            obs.obstacle_type = objects.at(i).classification;    // 类型
+
+            // 角度
+            geometry_msgs::msg::Quaternion obs_quaternion = objects.at(i).pose.orientation;
+            obs.obstacle_theta = tf2::getYaw(obs_quaternion);
+            obs.obstacle_velocity = objects.at(i).twist.linear.x;
+            if (obs.obstacle_velocity > 0.2)    // 动态障碍物
+            {
+                auto oba = obs.GetOba();
+                Prediction::Ob_Trajectory ob_tray =
+                    oba->Generater_Trajectory(obs.centerpoint, 4, obs.obstacle_theta, obs.obstacle_velocity);
+                obs.SetTrajectory(ob_tray);
+            }
+
+            /*---------------------------------------过滤不在有效区域的障碍物-------------------------------------------*/
+            // PPoint centerpoint(obs.centerpoint.position.x, obs.centerpoint.position.y);
+            // if (oba.Inside_rectangle(front_left, back_left, back_right, front_right, centerpoint) == false)
+            // {
+            //   continue; //跳过这个障碍物，进入下一个
+            // }
+
+            /*--------------------------------------不同形状有差别的信息-----------------------------------------*/
+            // std::cout << "shape:" << msgs->objects[i].shape.type << std::endl;
+
+            if (obs.obstacle_type == 6)    // Car
+            {
+                obs.pinnacle.poses.clear();    // 顶点暂时为空
+                obs.obstacle_radius =
+                    sqrt(pow(objects.at(i).shape.dimensions.at(0), 2) + pow(objects.at(i).shape.dimensions.at(1), 2)) /
+                    2;
+                // 长和宽
+                obs.obstacle_length = objects.at(i).shape.dimensions.at(0);
+                obs.obstacle_width = objects.at(i).shape.dimensions.at(1);
+                obs.obstacle_height = objects.at(i).shape.dimensions.at(2);
+            } else if (obs.obstacle_type == 4)    // 圆形：Pedestrian
+            {
+                obs.obstacle_radius = objects.at(i).shape.dimensions.at(0);    // 半径
+                // 顶点
+                obs.pinnacle.poses.clear();
+                PPoint ob_center(obs.centerpoint.position.x, obs.centerpoint.position.y);
+                auto oba = obs.GetOba();
+                // 求障碍物顶点
+                PPoint ob_left_front;
+                PPoint ob_left_buttom;
+                PPoint ob_right_front;
+                PPoint ob_right_buttom;
+                oba->CalculateCarBoundaryPoint(1, 1, ob_center, obs.obstacle_theta, ob_left_front, ob_left_buttom,
+                                               ob_right_buttom, ob_right_front);
+                // oba->visualization_points(ob_left_front, ob_left_buttom, ob_right_buttom,
+                //                           ob_right_front);    // 显示障碍物顶点
+
+                std::vector<PPoint> ob_vector;
+                ob_vector.emplace_back(ob_right_front);     // 右下角
+                ob_vector.emplace_back(ob_left_buttom);     // 右上角
+                ob_vector.emplace_back(ob_left_front);      // 左上角
+                ob_vector.emplace_back(ob_right_buttom);    // 左下角
+                for (size_t j = 0; j < ob_vector.size(); ++j) {
+                    geometry_msgs::msg::Pose sds;
+                    sds.position.x = ob_vector[j].x;
+                    sds.position.y = ob_vector[j].y;
+                    sds.position.z = 0;    // 压缩二维
+                    obs.pinnacle.poses.push_back(sds);
+                    obs.polygon_points.push_back(Vec2d(ob_vector[j].x, ob_vector[j].y));
+                }
+                // 长和宽（假设）
+                obs.obstacle_length = objects.at(i).shape.dimensions.at(0);
+                obs.obstacle_width = objects.at(i).shape.dimensions.at(1);
+                obs.obstacle_height = objects.at(i).shape.dimensions.at(2);
+            }
+            // else if (msgs->objects[i].shape.type == 2) //多边形:未知
+            // {
+            //   //顶点
+            //   obs.pinnacle.poses.clear();
+            //   for (size_t j = 0; j < msgs->objects[i].shape.footprint.points.size(); j++)
+            //   {
+            //     geometry_msgs::Pose sds;
+            //     sds.position.x = msgs->objects[i].shape.footprint.points[j].x;
+            //     sds.position.y = msgs->objects[i].shape.footprint.points[j].y;
+            //     sds.position.z = 0; //压缩二维
+            //     obs.pinnacle.poses.push_back(sds);
+            //     obs.polygon_points.push_back(Vec2d(msgs->objects[i].shape.footprint.points[j].x,
+            //     msgs->objects[i].shape.footprint.points[j].y));
+            //   }
+
+            //   //半径为0
+            //   obs.obstacle_radius = 0;
+            //   //长和宽（假设）
+            //   obs.obstacle_length = msgs->objects[i].shape.dimensions.x;
+            //   obs.obstacle_width = msgs->objects[i].shape.dimensions.y;
+            //   obs.obstacle_height = msgs->objects[i].shape.dimensions.z;
+            // }
+            AllObstacle.emplace_back(obs);
+            std::cout << "pos_x: " << obs.centerpoint.position.x << "  pos_y: " << obs.centerpoint.position.y
+                      << "  heading: " << obs.obstacle_theta << "  width: " << obs.obstacle_width
+                      << "  length: " << obs.obstacle_length << "  velocity: " << obs.obstacle_velocity << std::endl;
+        }
+    }
+    std::cout << "AllObstacle size: " << AllObstacle.size() << " !!!!!!!" << std::endl;
 }
 
 void VehicleControlPublisher::ObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg) {
@@ -282,12 +504,13 @@ TrajectoryPointOri VehicleControlPublisher::QueryNearestPointByPosition(const do
             index_min = i;
         }
     }
-    // cout << "vehicle.x: " << x << " "
-    //      << "vehicle.y: " << y << endl;
-    // cout << "trajectory_points.x: " << trajectory_points_[index_min].x << " "
-    //      << "trajectory_points.y: " << trajectory_points_[index_min].y;
+    cout << "index: " << index_min << " ";
+    cout << "vehicle.x: " << x << " "
+         << "vehicle.y: " << y << endl;
+    cout << "trajectory_points.x: " << trajectory_points_[index_min].x << " "
+         << "trajectory_points.y: " << trajectory_points_[index_min].y;
 
-    // cout << endl;
+    cout << endl;
 
     return trajectory_points_[index_min];
 }
@@ -371,6 +594,9 @@ void VehicleControlPublisher::VehicleControlIterationCallback()
 
     target_point_ = this->QueryNearestPointByPosition(vehicle_state_.x, vehicle_state_.y);
 
+    std::cout << "target_point_.v : " << target_point_.v << "  target_point_.x: " << target_point_.x
+              << "  target_point_.y: " << target_point_.y << std::endl;
+
     double v_err = target_point_.v - vehicle_state_.v;                  // 速度误差
     double yaw_err = vehicle_state_.heading - target_point_.heading;    // 横摆角误差
 
@@ -427,6 +653,36 @@ void VehicleControlPublisher::VehicleControlIterationCallback()
     vehicle_control_target_velocity.velocity = target_point_.v / 3.6;
     vehicle_control_target_velocity_publisher->publish(vehicle_control_target_velocity);
     cnt++;
+}
+
+// 非referenceLine成员函数
+// 已知顶点和中心点，将任何障碍物变成方形的二维平面，计算长和宽,并存储于Marker
+void VehicleControlPublisher::Turn_obstacles_into_squares(visualization_msgs::msg::Marker &marker,
+                                                          const Obstacle *Primitive_obstacle, const int id) {
+    tf2::Quaternion myQuaternion;
+    myQuaternion.setRPY((double)0.0, (double)0.0, (double)(Primitive_obstacle->obstacle_theta));
+    marker.pose.orientation.set__w(myQuaternion.getW());
+    marker.pose.orientation.set__x(myQuaternion.getX());
+    marker.pose.orientation.set__y(myQuaternion.getY());
+    marker.pose.orientation.set__z(myQuaternion.getZ());
+
+    marker.header.frame_id = "world";
+    // marker.header.stamp = ros::Time::now();
+    marker.ns = "basic_shapes";
+    marker.id = id;
+    marker.type = visualization_msgs::msg::Marker::CUBE;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.pose.position.x = Primitive_obstacle->centerpoint.position.x;
+    marker.pose.position.y = Primitive_obstacle->centerpoint.position.y;
+    marker.pose.position.z = 0;
+    marker.scale.x = Primitive_obstacle->obstacle_length;
+    marker.scale.y = Primitive_obstacle->obstacle_width;
+    marker.scale.z = Primitive_obstacle->obstacle_height;
+    marker.color.r = 255.0f;
+    marker.color.g = 140.0f;
+    marker.color.b = 0.0f;
+    marker.color.a = 1.0;
+    // marker.lifetime = ros::Duration();
 }
 
 // int main(int argc, char **argv)

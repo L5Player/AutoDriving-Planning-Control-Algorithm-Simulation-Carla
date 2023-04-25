@@ -216,20 +216,20 @@ const common::math::Polygon2d &Obstacle::PerceptionPolygon() const { return perc
 
 // 显示预测轨迹
 void Obstacle::visualization(const std::vector<Obstacle> Obstacles_) {
-    geometry_msgs::msg::PoseArray obstacle_trajectories_;
-    obstacle_trajectories_.header.frame_id = "world";
-    obstacle_trajectories_.header.stamp = nObstacle_->get_clock()->now();
-    for (auto &obstacle : Obstacles_) {
-        std::vector<TrajectoryPoint> trajectory_points_ = obstacle.Trajectory().trajectory_point();
-        if (trajectory_points_.size() > 0) {
-            for (size_t i = 0; i < trajectory_points_.size(); i++) {
-                geometry_msgs::msg::Pose obstacle_trajectory;
-                Show_ob_prediction(obstacle_trajectory, trajectory_points_[i]);
-                obstacle_trajectories_.poses.push_back(obstacle_trajectory);
-            }
-        }
-    }
-    Obstacle_Prediction->publish(obstacle_trajectories_);
+    // geometry_msgs::msg::PoseArray obstacle_trajectories_;
+    // obstacle_trajectories_.header.frame_id = "world";
+    // obstacle_trajectories_.header.stamp = nObstacle_->get_clock()->now();
+    // for (auto &obstacle : Obstacles_) {
+    //     std::vector<TrajectoryPoint> trajectory_points_ = obstacle.Trajectory().trajectory_point();
+    //     if (trajectory_points_.size() > 0) {
+    //         for (size_t i = 0; i < trajectory_points_.size(); i++) {
+    //             geometry_msgs::msg::Pose obstacle_trajectory;
+    //             Show_ob_prediction(obstacle_trajectory, trajectory_points_[i]);
+    //             obstacle_trajectories_.poses.push_back(obstacle_trajectory);
+    //         }
+    //     }
+    // }
+    // Obstacle_Prediction->publish(obstacle_trajectories_);
 }
 
 void Obstacle::Show_ob_prediction(geometry_msgs::msg::Pose &obstacle_trajectory_,

@@ -144,10 +144,10 @@ double CartesianFrenetConverter::CalculateSecondOrderLateralDerivative(const dou
       (1 - rkappa * l) / (cos_theta_diff * cos_theta_diff) * (kappa * (1 - rkappa * l) / cos_theta_diff - rkappa);
   if (std::isinf(res))
   {
-    std::cout << "result is inf when calculate second order lateral "
-                 "derivative. input values are rtheta:"
-              << rtheta << " theta: " << theta << ", rkappa: " << rkappa << ", kappa: " << kappa
-              << ", rdkappa: " << rdkappa << ", l: " << l << std::endl;
+    // std::cout << "result is inf when calculate second order lateral "
+    //              "derivative. input values are rtheta:"
+    //           << rtheta << " theta: " << theta << ", rkappa: " << rkappa << ", kappa: " << kappa
+    //           << ", rdkappa: " << rdkappa << ", l: " << l << std::endl;
   }
   return res;
 }

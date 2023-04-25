@@ -70,7 +70,7 @@ bool ST_Boundary::IsPointInBoundary(const STPoint &st_point) const
   //找到的区间左下标放在left，右下标放在right
   if (!GetIndexRange(lower_points_, st_point.t(), &left, &right))
   {
-    std::cout << "failed to get index range.";
+    // std::cout << "failed to get index range.";
     return false;
   }
   //这一块不懂数学原理，但大致推测是计算几何的内容，
@@ -189,7 +189,7 @@ bool ST_Boundary::GetUnblockSRange(const double curr_time, double *s_upper, doub
   size_t right = 0;
   if (!GetIndexRange(lower_points_, curr_time, &left, &right))
   {
-    std::cout << "Fail to get index range.";
+    // std::cout << "Fail to get index range.";
     return false;
   }
   // std::cout << "left:" << left << ","
@@ -229,7 +229,7 @@ bool ST_Boundary::GetUnblockSRange(const double curr_time, double *s_upper, doub
   }
   else
   {
-    std::cout << "boundary_type is not supported. boundary_type: " << static_cast<int>(boundary_type_);
+    // std::cout << "boundary_type is not supported. boundary_type: " << static_cast<int>(boundary_type_);
     return false;
   }
   return true;

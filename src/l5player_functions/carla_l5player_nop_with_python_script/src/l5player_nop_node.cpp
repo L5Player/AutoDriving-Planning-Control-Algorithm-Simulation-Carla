@@ -14,9 +14,18 @@ int main(int argc, char **argv)
 
     rclcpp::init(argc, argv);
 
-    auto n = std::make_shared<VehicleControlPublisher>();
+    auto nop_node = std::make_shared<VehicleControlPublisher>();
 
-    rclcpp::spin(n);
+    rclcpp::Rate loop_rate(100);
+    while (rclcpp::ok()) {
+        rclcpp::spin_some(nop_node);
+
+        nop_node->NopRunOnce();
+
+        loop_rate.sleep();
+    }
+
+    // rclcpp::spin(n);
 
     rclcpp::shutdown();
 

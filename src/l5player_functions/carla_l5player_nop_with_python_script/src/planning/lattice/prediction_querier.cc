@@ -35,7 +35,7 @@ PredictionQuerier::PredictionQuerier(
         }
         else
         {
-            std::cout << "Duplicated obstacle found [" << ptr_obstacle->obstacle_id << "]";
+            // std::cout << "Duplicated obstacle found [" << ptr_obstacle->obstacle_id << "]";
         }
     }
 }

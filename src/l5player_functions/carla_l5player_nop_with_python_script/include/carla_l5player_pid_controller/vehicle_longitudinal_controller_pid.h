@@ -1,3 +1,4 @@
+#pragma once
 #ifndef VEHICLE_CONTROL_H
 #define VEHICLE_CONTROL_H
 
@@ -20,6 +21,7 @@
 #include <tf2_ros/transform_broadcaster.h>
 
 #include "planning/lattice/lattice.h"
+#include "planning/reference_line/reference_line.h"
 
 using std::placeholders::_1;
 
@@ -32,6 +34,8 @@ class VehicleControlPublisher : public rclcpp::Node
 public:
     VehicleControlPublisher();
     ~VehicleControlPublisher();
+
+    void NopRunOnce();
 
     double PointDistanceSquare(const TrajectoryPointOri &point, const double x, const double y);
 
@@ -53,6 +57,11 @@ public:
     void GlobalPathPublishCallback();
 
     void ObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg);
+
+    void SetObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg);
+
+    void Turn_obstacles_into_squares(visualization_msgs::msg::Marker &marker, const Obstacle *Primitive_obstacle,
+                                     const int id);
 
 public:
     double V_set_;
@@ -110,16 +119,20 @@ public:
     nav_msgs::msg::Path global_path;
     geometry_msgs::msg::PoseStamped this_pose_stamped;
 
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr rviz_obstacle_pub_;
+
     // added
     derived_object_msgs::msg::ObjectArray carla_vehicle_objects_;
     rclcpp::Subscription<derived_object_msgs::msg::ObjectArray>::SharedPtr carla_vehicle_object_subscriber;
     bool if_aeb_active_{false};
 
-private:
+public:
     // add for nop
     int which_planners{0};
     std::shared_ptr<l5player::planning::PlanningBase> planning_base_;
-
+    Eigen::MatrixXd routing_waypoints_; // 中心点坐标
+    l5player::reference_line::referenceLine rl_;
+    std::vector<Obstacle> AllObstacle;
 };
 
 #endif

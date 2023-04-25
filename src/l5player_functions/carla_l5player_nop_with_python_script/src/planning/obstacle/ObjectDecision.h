@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 // dodge the obstacle in lateral direction when driving
 class ObjectNudge

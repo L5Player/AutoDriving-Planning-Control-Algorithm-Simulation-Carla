@@ -117,8 +117,8 @@ void referenceLine::run() {
         }
         // 确保gps和reference_points收到数据之后再进行
         if (reference_points.size() > 0 && gps_flag_.size() > 0) {
-            double current_time = node_refline_->get_clock()->now().seconds();
-            ;
+            // double current_time = node_refline_->get_clock()->now().seconds();
+            double current_time;
             std::vector<TrajectoryPoint> stitching_trajectory = plan_start_point(current_time);
             // 轨迹生成
             PlanningTarget planning_target(Config_.default_cruise_speed, accumulated_s);    // 目标m/s
