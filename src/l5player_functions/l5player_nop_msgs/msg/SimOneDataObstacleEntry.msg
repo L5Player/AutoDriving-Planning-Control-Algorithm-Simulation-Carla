@@ -1,0 +1,16 @@
+int32 id
+int32 viewid
+SimOneObstacleType type
+float64 theta
+float64 posx
+float64 posy
+float64 posz
+float64 orix
+float64 oriy
+float64 oriz
+float64 velx
+float64 vely
+float64 velz
+float64 length
+float64 width
+float64 height

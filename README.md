@@ -29,6 +29,14 @@ CSDN地址: https://blog.csdn.net/nn243823163/category_11685852.html?spm=1001.20
 ![carla](./figures/carla.png) 
 <br><br>
 
+# NOP function scenario design and control
+1. source source_env.sh
+2. ros2 launch carla_l5player_bridge_ego_vis carla_bridge_ego_vehilce.launch.py
+3. python vehicle_gallery_aeb.py
+4. ros2 run carla_l5player_nop_with_python_script carla_l5player_nop_with_python_script_node
+5. 同时启动rviz: ros2 launch carla_l5player_nop_with_python_script nop_launch.py 
+<br><br>
+
 # AEB function scenario design and control
 0. 通过python api设计AEB场景并实现功能
 1. source source_env.sh

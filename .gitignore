@@ -132,3 +132,12 @@ src/integrated_navigation_system_python/run_log/*
 *.idc
 
 src/ibeo_8l_client/record/*
+
+scripts/osqp-0.5.0
+scripts/qpOASES
+scripts/yaml-cpp
+
+
+scripts/osqp-0.5.0/
+scripts/qpOASES/
+scripts/yaml-cpp/

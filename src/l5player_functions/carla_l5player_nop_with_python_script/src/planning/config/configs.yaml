@@ -1,0 +1,255 @@
+#----------------------------------调整参数不用再编译，直接roslaunch运行----------------------------------------#
+
+default_cruise_speed: 11   #  最大巡航速度, Lattice:1.5， EM：1.5
+
+FLAGS_default_reference_line_width: 10.0    # 道路的宽度
+
+# cost
+FLAGS_trajectory_time_resolution: 0.1       #  Trajectory time resolution in planning
+FLAGS_weight_target_speed: 1.0              #  Weight of target speed cost
+FLAGS_weight_dist_travelled: 10.0           #  Weight of travelled distance cost
+FLAGS_longitudinal_jerk_lower_bound: -4.0   #  The lower bound of longitudinal jerk.
+FLAGS_longitudinal_jerk_upper_bound: 4.0    #  The upper bound of longitudinal jerk
+FLAGS_lon_collision_cost_std: 0.5           #  The standard deviation of longitudinal collision cost function
+FLAGS_lon_collision_yield_buffer: 1.0       #  Longitudinal collision buffer for yield
+FLAGS_lon_collision_overtake_buffer: 5.0    #  Longitudinal collision buffer for overtake
+
+FLAGS_weight_lon_objective: 10.0   #  Weight of longitudinal travel cost
+FLAGS_weight_lon_jerk: 1.0      #  Weight of longitudinal jerk cost
+FLAGS_weight_lon_collision: 3.0   #  Weight of longitudinal collision cost
+FLAGS_weight_centripetal_acceleration: 3.5  #  Weight of centripetal acceleration1.5
+FLAGS_weight_lat_offset: 2.0    #  Weight of lateral offset cost
+FLAGS_weight_lat_comfort: 2.0  #  Weight of lateral comfort cost
+
+FLAGS_speed_lon_decision_horizon: 50     # Longitudinal horizon for speed decision making (meter)
+FLAGS_trajectory_space_resolution: 1.0   # Trajectory space resolution in planning
+FLAGS_lat_offset_bound: 3.0              # The bound of lateral offset
+FLAGS_weight_opposite_side_offset: 10    # Weight of opposite side lateral offset cost
+FLAGS_weight_same_side_offset: 1.0       # Weight of same side lateral offset cost
+
+FLAGS_speed_lower_bound: -0.1                       # The lowest speed allowed
+FLAGS_speed_upper_bound: 50                         # The highest speed allowed  Lattice专用
+FLAGS_longitudinal_acceleration_lower_bound: -4.5   # The lowest longitudinal acceleration allowed
+FLAGS_longitudinal_acceleration_upper_bound: 4.0      # The highest longitudinal acceleration allowed
+FLAGS_comfort_acceleration_factor: 0.5              # Factor for comfort acceleration
+FLAGS_Max_curvature: 0.2                            # 轨迹的最大曲率
+FLAGS_kappa_bound: 0.10 
+FLAGS_dkappa_bound: 0.04 
+FLAGS_lateral_acceleration_bound: 4.0 
+FLAGS_lateral_jerk_bound: 4.0
+
+ # 纵向规划
+FLAGS_trajectory_time_length: 8.0      # 轨迹时间 [s]，8s
+FLAGS_polynomial_minimal_param: 0.01   # Minimal time parameter in polynomials
+FLAGS_num_velocity_sample: 6           # The number of velocity samples in end condition sampler
+FLAGS_min_velocity_sample_gap: 1.0     # Minimal sampling gap for velocity
+
+ # 二次规划下调整的参数
+FLAGS_enable_osqp_debug: false 
+FLAGS_weight_lateral_offset: 2.0  # "weight for lateral offset in lateral trajectory optimization"
+FLAGS_weight_lateral_derivative: 500.0 
+FLAGS_weight_lateral_second_order_derivative: 1000.0 
+FLAGS_lateral_third_order_derivative_max: 0.1 
+FLAGS_weight_lateral_obstacle_distance: 1.0  # "weight for lateral obstacle distance in lateral trajectory optimization"
+FLAGS_default_delta_s_lateral_optimization: 1.0 
+FLAGS_max_s_lateral_optimization: 60.0 
+FLAGS_bound_buffer: 0.2
+FLAGS_numerical_epsilon: 0.0000001         # 横向优化的边界缓冲
+FLAGS_nudge_buffer: 0.4                  # 用于二次规划横向优化的微移缓冲
+kSampleDistance: 0.25 
+FLAGS_lon_collision_buffer: 4.0     # "The longitudinal buffer to keep distance to other vehicles"
+FLAGS_lat_collision_buffer: 0.5           # Lattice采样规划的碰撞buffer 0.2
+
+#  VehicleParam
+min_turn_radius: 5.05386147161 
+max_acceleration: 10 
+min_deceleration: -0.5 
+max_deceleration: -1.0 
+preferred_max_acceleration: 10 
+preferred_min_deceleration: -0.3 
+wheel_rolling_radius: 0.335 
+brake_deadzone: 14.5 
+throttle_deadzone: 15.4 
+
+FLAGS_default_lon_buffer: 5.0            # "Default longitudinal buffer to sample path-time points."
+FLAGS_time_min_density: 1.0               # "Minimal time density to search sample points."
+FLAGS_num_sample_follow_per_timestamp: 3  #  "The number of sample points for each timestamp to follow"
+
+FLAGS_vehicle_width: 1.8
+FLAGS_vehicle_length: 4.8
+# 改车的长度宽度之后，下面4个一定要改
+front_edge_to_center: 2.34 #3.89
+back_edge_to_center: 2.46  # 车尾到非几何中心的距离
+left_edge_to_center: 0.9
+right_edge_to_center: 0.9
+
+wheel_base: 2.8448               #  原来是2.8448,wheel_base
+max_steer_angle: 8.20304748437   #  8.20304748437
+max_steer_angle_rate: 8.55211    #   8.55211
+steer_ratio: 16                  #   16
+max_abs_speed_when_stopped: 0.2 
+
+#  SQP solver
+FLAGS_enable_sqp_solver: true       #  "True to enable SQP solver."
+default_active_set_eps_num: -0.0000001   # "qpOases wrapper error control numerator"
+default_active_set_eps_den: 0.0000001    # "qpOases wrapper error control denominator"
+default_active_set_eps_iter_ref: 0.0000001                                            # "qpOases wrapper early termination tolerance for iterative refinement" #  NOLINT
+default_qp_smoothing_eps_num: -0.0000001   # "qpOases wrapper error control numerator"
+default_qp_smoothing_eps_den: 0.0000001    # "qpOases wrapper error control denominator"
+default_qp_smoothing_eps_iter_ref: 0.0000001                                                  # "qpOases wrapper early termination tolerance for iterative refinement"  #  NOLINT
+default_enable_active_set_debug_info: false   # "Enable print information"
+default_qp_iteration_num: 1000            # "Default qp oases iteration time"
+
+look_forward_time_sec: 8.0        #  "look forward time times adc speed to calculate this distance when creating reference line from routing"
+PathLength: 15.0                    # 预计的轨迹长度，即路径DP采样的前探距离， 规划的参考线要比PathLength这个长,长度要和目标速度搭配调,速度越大合成的轨迹长度越长
+step_length_max: 6.0              #  [default: 15.0] 
+step_length_min: 3.0              # [default: 8.0] 
+uturn_speed_limit: 1.0            # U形大弯
+planning_upper_speed_limit: 2.5   #  Maximum speed (m/s) in planning. EM专用
+max_spline_length: 15.0            # 每一段sqp优化曲线长度
+max_constraint_interval: 15.0       # 每一段sqp优化限制
+change_lane_speed_relax_percentage: 0.05   # "The percentage of change lane speed relaxation."
+reference_line_weight: 0.0                # 路径qp优化参考线权重
+history_path_weight: 5.0                 # 路径qp优化历史轨迹(即输入的Dp路径)权重
+derivative_weight: 0.1
+first_spline_weight_factor: 10.0 
+second_derivative_weight: 200.0 
+third_derivative_weight: 1000.0 
+lane_change_mid_l: 0.6 
+
+FLAGS_dl_bound: 2.0   # "The bound for derivative l in s-l coordinate system."
+spline_order: 5 
+time_resolution: 0.1 
+num_output: 100   # 
+point_constraint_s_position: 110.0 
+cross_lane_lateral_extension: 1.2 
+
+#  DpStSpeedOptimizerConfig 和 STDrivableBoundary
+unit_t: 1.0 
+safe_distance: 0.2 
+total_path_length: 39   # 可调整,什么意义，没想出来
+total_time: 7.0 
+dense_dimension_s: 40   # 可调整影响速度DP中s/t图采样效果
+dense_unit_s: 0.1         # 可调整影响速度DP中s/t图采样效果
+sparse_unit_s: 1.0        # 可调整影响速度DP中s/t图采样效果
+matrix_dimension_s: 20 
+matrix_dimension_t: 8.0 
+obstacle_weight: 1.0 
+default_obstacle_cost: 10000 
+spatial_potential_penalty: 100 
+reference_weight: 0.0 
+keep_clear_low_speed_penalty: 10.0 
+default_speed_cost: 10 
+exceed_speed_penalty: 10 
+low_speed_penalty: 10.0 
+reference_speed_penalty: 10.0 
+accel_penalty: 1.0 
+decel_penalty: 1.0 
+positive_jerk_coeff: 1.0 
+negative_jerk_coeff: 1.0 
+
+FLAGS_use_st_drivable_boundary: false 
+FLAGS_enable_dp_reference_speed: true 
+FLAGS_use_navigation_mode: false 
+IsChangeLanePath: false         # 如果可以变道
+IsClearToChangeLane: false      # 可以换车道了,也就是换道安全
+sample_points_num_each_level: 5  # [default: 9] 
+navigator_sample_num_each_level: 3 
+lateral_sample_offset: 0.5  # [default: 0.5] 
+lateral_adjust_coeff: 0.5   # [default: 0.5] 
+sidepass_distance: 2.8 
+
+#  Trajectory Cost Config
+eval_time_interval: 0.1           #  [default: 0.1] 
+path_resolution: 0.2              #  [default: 0.1] 
+obstacle_ignore_distance: 20.0    #  [default: 20.0] 
+obstacle_collision_distance: 0.2  #  [default: 0.2] 
+obstacle_risk_distance: 2.0       #  [default: 2.0] 
+obstacle_collision_cost: 1000.0      #  [default: 1e3] 
+path_l_cost: 6.5 
+path_dl_cost: 8000 
+path_ddl_cost: 5.0 
+path_l_cost_param_l0: 1.50 
+path_l_cost_param_b: 0.40 
+path_l_cost_param_k: 1.5 
+path_out_lane_cost: 100000000 
+path_end_l_cost: 10000.0 
+FLAGS_prediction_total_time: 5.0  # 预测
+FLAGS_lateral_ignore_buffer: 0.4  #  EM planner重要参数，调节边界缓冲值
+FLAGS_slowdown_profile_deceleration: 0.1 
+FLAGS_trajectory_time_min_interval: 0.1 
+FLAGS_trajectory_time_max_interval: 0.2         # "(seconds) Trajectory time interval when publish. The is the max value."
+FLAGS_trajectory_time_high_density_period: 1.0  # (seconds) Keep high density in the next this amount of seconds.
+
+#  QP过程的参数
+#  skip all path tasks and use trimmed previous path
+FLAGS_enable_skip_path_tasks: false 
+#  If using front axe center in path planning, the path can be more agile
+FLAGS_use_front_axe_center_in_path_planning: false 
+#  enable force_pull_over_open_space_parking_test
+FLAGS_enable_force_pull_over_open_space_parking_test: false 
+#  the default value for lateral derivative bound.
+FLAGS_lateral_derivative_bound_default: 2.0 
+path_reference_l_weight: 1.0  # [default: 0.0] 
+
+#  piecewise_jerk_speed_optimizer_config
+acc_weight: 1.0 
+jerk_weight: 3.0 
+kappa_penalty_weight: 2000.0 
+ref_s_weight: 10.0 
+ref_v_weight: 100.0 
+fallback_total_time: 3.0 
+fallback_time_unit: 0.1 
+
+qp_delta_s: 1.0 
+min_look_ahead_time: 6.0 
+min_look_ahead_distance: 15.0 
+lateral_buffer: 0.2 
+path_output_resolution: 0.1 
+
+#  QpStSpeedConfig
+FLAGS_use_osqp_optimizer_for_qp_st: false 
+FLAGS_enable_follow_accel_constraint: true  #  "Enable follow acceleration constraint."
+number_of_discrete_graph_t: 4 
+accel_kernel_weight: 1000 
+jerk_kernel_weight: 100 
+stop_weight: 0.2 
+cruise_weight: 0.3 
+follow_weight: 5.0 
+regularization_weight: 0.01 
+follow_drag_distance: 17.0 
+dp_st_reference_weight: 100  # 速度规划qp，设置原始速度的影响
+init_jerk_kernel_weight: 50000.0 
+yield_weight: 100.0 
+yield_drag_distance: 20.0 
+number_of_evaluated_graph_t: 40 
+# StBoundaryConfig
+boundary_buffer: 0.3 
+high_speed_centric_acceleration_limit: 0.8 
+low_speed_centric_acceleration_limit: 1.2 
+high_speed_threshold: 1.5 
+low_speed_threshold: 0.5 
+minimal_kappa: 0.00001 
+point_extension: 1.0 
+lowest_speed: 0.5  # 速度限制里面的最低速度
+num_points_to_avg_kappa: 2 
+static_obs_nudge_speed_ratio: 0.6 
+dynamic_obs_nudge_speed_ratio: 0.8 
+centri_jerk_speed_coeff: 1.0 
+FLAGS_enable_nudge_slowdown: true 
+
+# PlannerOpenSpaceConfig
+xy_grid_resolution: 0.6
+phi_grid_resolution: 0.4
+grid_a_star_xy_resolution: 1.0
+node_radius: 0.6  #与障碍物边的距离阈值，一般是车一半加上0.2补偿一下
+step_size: 0.5
+FLAGS_enable_parallel_hybrid_a: false  #"True to enable hybrid a* parallel implementation."
+next_node_num: 10
+delta_t: 0.2
+traj_forward_penalty: 1.0
+traj_back_penalty: 1.0
+traj_gear_switch_penalty: 10.0
+traj_steer_penalty: 0.0
+traj_steer_change_penalty: 0.0
+FLAGS_use_s_curve_speed_smooth: true #"Whether use s-curve (piecewise_jerk) for smoothing Hybrid Astar speed/acceleration."
