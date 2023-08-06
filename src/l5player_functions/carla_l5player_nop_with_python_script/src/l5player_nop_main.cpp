@@ -2,8 +2,8 @@
 
 #include <fstream>
 
-#include "carla_l5player_pid_controller/common.h"
-#include "carla_l5player_pid_controller/vehicle_longitudinal_controller_pid.h"
+#include "l5player_nop/common.h"
+#include "l5player_nop/nop_function_node.h"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 
@@ -18,7 +18,7 @@ l5player::control::PIDController yaw_pid_controller(0.5, 0.3, 0.1);    // 转向
 // l5player::control::PIDController speed_pid_controller(0.206, 0.0206, 0.515);    // 速度pid Kp Ki Kd
 l5player::control::PIDController speed_pid_controller(0.16, 0.02, 0.01);    // 速度pid Kp Ki Kd
 
-VehicleControlPublisher::VehicleControlPublisher()
+NopFunctionNode::NopFunctionNode()
     : Node("carla_l5player_nop_with_python_script")
 /*'''**************************************************************************************
 - FunctionName: None
@@ -47,16 +47,13 @@ VehicleControlPublisher::VehicleControlPublisher()
             break;
     }
 
-    // RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 1");
-
-    vehicle_control_iteration_timer_ =
-        this->create_wall_timer(50ms, std::bind(&VehicleControlPublisher::VehicleControlIterationCallback, this));
-
+    // RCLCPP_INFO(LOGGER, "NopFunctionNode test 1");
     localization_data_subscriber = this->create_subscription<nav_msgs::msg::Odometry>(
-        "/carla/ego_vehicle/odometry", qos, std::bind(&VehicleControlPublisher::odomCallback, this, _1));
+        "/carla/ego_vehicle/odometry", qos, std::bind(&NopFunctionNode::odomCallback, this, _1));
 
-    vehicle_control_publisher =
-        this->create_publisher<carla_msgs::msg::CarlaEgoVehicleControl>("/carla/ego_vehicle/vehicle_control_cmd", qos);
+    imu_subscriber_ = this->create_subscription<sensor_msgs::msg::Imu>(
+        "/carla/ego_vehicle/imu", qos, std::bind(&NopFunctionNode::ImuCallback, this, _1));
+
     control_cmd.header.stamp = this->now();
     control_cmd.gear = 1;
     control_cmd.manual_gear_shift = false;
@@ -70,27 +67,28 @@ VehicleControlPublisher::VehicleControlPublisher()
     vehicle_control_target_velocity.velocity = 0.0;
 
     carla_status_subscriber = this->create_subscription<carla_msgs::msg::CarlaEgoVehicleStatus>(
-        "/carla/ego_vehicle/vehicle_status", qos, std::bind(&VehicleControlPublisher::VehicleStatusCallback, this, _1));
+        "/carla/ego_vehicle/vehicle_status", qos, std::bind(&NopFunctionNode::VehicleStatusCallback, this, _1));
 
     carla_vehicle_object_subscriber = this->create_subscription<derived_object_msgs::msg::ObjectArray>(
-        "/carla/ego_vehicle/objects", qos, std::bind(&VehicleControlPublisher::SetObjectArrayCallback, this, _1));
+        "/carla/ego_vehicle/objects", qos, std::bind(&NopFunctionNode::SetObjectArrayCallback, this, _1));
 
-    // RCLCPP_INFO(LOGGER, "VehicleControlPublisher test 2");
+    // RCLCPP_INFO(LOGGER, "NopFunctionNode test 2");
 
     // 读取参考线路径
     std::ifstream infile(
-        "/home/bea20/l5player_premium/auto-driving-planning-control-algorithm-simulation-carla/src/l5player_functions/"
+        "/home/bea20/l5player_premium/auto-driving-planning-control-algorithm-simulation-carla_premium/src/"
+        "l5player_functions/"
         "carla_l5player_nop_with_python_script/data/"
         "2022_09_29_16_27_08_ins_data_map_after_preprocess.csv",
-        ios::in);                // 将文件流对象与文件连接起来
+        std::ios::in);           // 将文件流对象与文件连接起来
     assert(infile.is_open());    // 若失败,则输出错误消息,并终止程序运行
 
     while (getline(infile, _line)) {
         // std::cout << _line << std::endl;
         // 解析每行的数据
-        stringstream ss(_line);
-        string _sub;
-        vector<string> subArray;
+        std::stringstream ss(_line);
+        std::string _sub;
+        std::vector<std::string> subArray;
         // 按照逗号分隔
         while (getline(ss, _sub, ',')) {
             subArray.push_back(_sub);
@@ -121,19 +119,29 @@ VehicleControlPublisher::VehicleControlPublisher()
     acceleration_cmd = 0.0;
     steer_cmd = 0.0;
 
+    vehicle_control_publisher =
+        this->create_publisher<carla_msgs::msg::CarlaEgoVehicleControl>("/carla/ego_vehicle/vehicle_control_cmd", qos);
     global_path_publisher_ = this->create_publisher<nav_msgs::msg::Path>("/global_reference_path", 2);
-    history_path_visualization_publisher = this->create_publisher<nav_msgs::msg::Path>("/history_path", 2);
+    nop_planed_traj_publisher = this->create_publisher<nav_msgs::msg::Path>("/l5player_nop_planed_path", 2);
     rviz_obstacle_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/l5player_nop/obstacle", 2);
+    nop_rl_points_publisher_ = this->create_publisher<nav_msgs::msg::Path>("l5player_nop_rl_points", 2);
+    nop_debug_info_publisher_ =
+        this->create_publisher<l5player_nop_msgs::msg::NopFunctionDebugInfo>("l5player_nop_debuginfo", 2);
 
     global_path_publish_timer =
-        this->create_wall_timer(500ms, std::bind(&VehicleControlPublisher::GlobalPathPublishCallback, this));
+        this->create_wall_timer(500ms, std::bind(&NopFunctionNode::GlobalPathPublishCallback, this));
+
+    // timer for control
+    vehicle_control_iteration_timer_ =
+        this->create_wall_timer(50ms, std::bind(&NopFunctionNode::VehicleControlIterationCallback, this));
 
     // Initialize the transform broadcaster
     tf_broadcaster_gps_vehicle = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 }
 
-void VehicleControlPublisher::NopRunOnce() {
+void NopFunctionNode::NopRunOnce() {
     // 障碍物存储
+    std::cout << "==========NopRunOnce==========" << std::endl;
     std::vector<const Obstacle *> obstacles;    // Apollo是这种类型
     for (size_t i = 0; i < AllObstacle.size(); ++i) {
         obstacles.emplace_back(&AllObstacle.at(i));
@@ -151,10 +159,28 @@ void VehicleControlPublisher::NopRunOnce() {
     }
 
     auto reference_points_ptr = rl_.GetReferencePoints();
+    nav_msgs::msg::Path pub_rl_points_rviz;
+    pub_rl_points_rviz.poses.clear();
+    pub_rl_points_rviz.header.frame_id = "gps";
+    pub_rl_points_rviz.header.stamp = this->get_clock()->now();
+
+    for (int i = 0; i < reference_points_ptr->size(); ++i) {
+        geometry_msgs::msg::PoseStamped pose_stamp;
+        pose_stamp.header.frame_id = "gps";
+        pose_stamp.header.stamp = this->get_clock()->now();
+        pose_stamp.pose.position.x = reference_points_ptr->at(i).get_x();
+        pose_stamp.pose.position.y = reference_points_ptr->at(i).get_y();
+        pose_stamp.pose.position.z = 0;
+        pub_rl_points_rviz.poses.push_back(pose_stamp);
+    }
+    nop_rl_points_publisher_->publish(pub_rl_points_rviz);
 
     if (reference_points_ptr->size() > 0) {
         double current_time = this->get_clock()->now().seconds();
         std::vector<TrajectoryPoint> stitching_trajectory = rl_.plan_start_point(current_time);
+        std::cout << "planning point start point x: " << stitching_trajectory.at(0).x
+                  << ", start point y: " << stitching_trajectory.at(0).y << std::endl;
+
         PlanningTarget planning_target(Config_.default_cruise_speed, rl_.accumulated_s);    // 目标m/s
         rl_.lon_decision_horizon = rl_.accumulated_s.back();
         rl_.best_path_ = planning_base_->plan(stitching_trajectory.back(), planning_target, obstacles,
@@ -182,52 +208,29 @@ void VehicleControlPublisher::NopRunOnce() {
         //   pre_trajectory_[i].absolute_time);
         // }
 
-        // 发布轨迹
         DiscretizedTrajectory &pre_trajectory_ = rl_.pre_trajectory_;
-        l5player_nop_msgs::msg::Trajectory trajectory_d;
-        trajectory_d.trajectorypoint.clear();
-        trajectory_d.pointsize = pre_trajectory_.size();
-        for (int i = 0; i < pre_trajectory_.size(); ++i) {
-            l5player_nop_msgs::msg::TrajectoryPoint TrajectoryPoint_d;
-            TrajectoryPoint_d.x = pre_trajectory_[i].x;
-            TrajectoryPoint_d.y = pre_trajectory_[i].y;
-            TrajectoryPoint_d.z = pre_trajectory_[i].z;
-            TrajectoryPoint_d.theta = pre_trajectory_[i].theta;
-            TrajectoryPoint_d.kappa = pre_trajectory_[i].kappa;
-            TrajectoryPoint_d.dkappa = pre_trajectory_[i].dkappa;
-            TrajectoryPoint_d.v = pre_trajectory_[i].v;
-            TrajectoryPoint_d.a = pre_trajectory_[i].a;
-            TrajectoryPoint_d.relative_time = pre_trajectory_[i].relative_time;
-            TrajectoryPoint_d.absolute_time = pre_trajectory_[i].absolute_time;
-            TrajectoryPoint_d.d = pre_trajectory_[i].d;
-            TrajectoryPoint_d.d_d = pre_trajectory_[i].d_d;
-            TrajectoryPoint_d.d_dd = pre_trajectory_[i].d_dd;
-            TrajectoryPoint_d.s = pre_trajectory_[i].s;
-            TrajectoryPoint_d.s_d = pre_trajectory_[i].s_d;
-            TrajectoryPoint_d.s_dd = pre_trajectory_[i].s_dd;
-            TrajectoryPoint_d.s_ddd = pre_trajectory_[i].s_ddd;
-            TrajectoryPoint_d.d_ddd = pre_trajectory_[i].d_ddd;
-            trajectory_d.trajectorypoint.emplace_back(TrajectoryPoint_d);
-        }
 
-        rl_.traj_points_.poses.clear();
-        rl_.traj_points_.header.frame_id = "world";
-        rl_.traj_points_.header.stamp = this->get_clock()->now();
-        for (int i = 0; i < pre_trajectory_.size(); ++i) {
-            geometry_msgs::msg::PoseStamped pose_stamp;
-            pose_stamp.header.frame_id = "world";
-            pose_stamp.header.stamp = this->get_clock()->now();
-            pose_stamp.pose.position.x = pre_trajectory_[i].x;
-            pose_stamp.pose.position.y = pre_trajectory_[i].y;
-            pose_stamp.pose.position.z = 0;
-            rl_.traj_points_.poses.push_back(pose_stamp);
-        }
+        // 发布plan生成轨迹
+        // rl_.traj_points_.poses.clear();
+        // rl_.traj_points_.header.frame_id = "gps";
+        // rl_.traj_points_.header.stamp = this->get_clock()->now();
+        // for (int i = 0; i < pre_trajectory_.size(); ++i) {
+        //     geometry_msgs::msg::PoseStamped pose_stamp;
+        //     pose_stamp.header.frame_id = "gps";
+        //     pose_stamp.header.stamp = this->get_clock()->now();
+        //     pose_stamp.pose.position.x = pre_trajectory_[i].x;
+        //     pose_stamp.pose.position.y = pre_trajectory_[i].y;
+        //     pose_stamp.pose.position.z = 0;
+        //     rl_.traj_points_.poses.push_back(pose_stamp);
+        // }
+        // nop_planed_traj_publisher->publish(rl_.traj_points_);
 
         // Construct the reference_line path profile
         std::vector<double> headings;
         std::vector<double> accumulated_s;
         std::vector<double> kappas;
         std::vector<double> dkappas;
+        std::vector<std::pair<double, double>> xy_points_temp;
         v_points.clear();
 
         for (size_t i = 0; i < pre_trajectory_.size(); i++) {
@@ -236,6 +239,7 @@ void VehicleControlPublisher::NopRunOnce() {
             kappas.emplace_back(pre_trajectory_.at(i).kappa);
             dkappas.emplace_back(pre_trajectory_.at(i).dkappa);
             v_points.emplace_back(pre_trajectory_.at(i).v);
+            xy_points_temp.emplace_back(std::make_pair(pre_trajectory_.at(i).x, pre_trajectory_.at(i).y));
         }
 
         size_t _count_points = headings.size();
@@ -244,10 +248,11 @@ void VehicleControlPublisher::NopRunOnce() {
         std::cout << "slow down points:" << _stop_begin_point << "  " << _stop_point << std::endl;
 
         int _index_before_stop = 0;
+        planning_published_trajectory.trajectory_points.clear();
         for (size_t i = 0; i < headings.size(); i++) {
             TrajectoryPointOri trajectory_pt;
-            trajectory_pt.x = xy_points[i].first;
-            trajectory_pt.y = xy_points[i].second;
+            trajectory_pt.x = xy_points_temp[i].first;
+            trajectory_pt.y = xy_points_temp[i].second;
             if (i < _stop_begin_point) {
                 trajectory_pt.v = v_points[i];
                 _index_before_stop++;
@@ -265,30 +270,79 @@ void VehicleControlPublisher::NopRunOnce() {
             trajectory_pt.kappa = kappas[i];
 
             planning_published_trajectory.trajectory_points.push_back(trajectory_pt);
-
-            // publish for rviz
-            this_pose_stamped.header.frame_id = "gps";
-            this_pose_stamped.header.stamp = this->get_clock()->now();
-            this_pose_stamped.pose.position.x = xy_points[i].first;
-            this_pose_stamped.pose.position.y = xy_points[i].second;
-            this_pose_stamped.pose.position.z = 0;
-            this_pose_stamped.pose.orientation.x = 0;
-            this_pose_stamped.pose.orientation.y = 0;
-            this_pose_stamped.pose.orientation.z = 0;
-            this_pose_stamped.pose.orientation.w = 0;    // 这里实际上是放的frenet坐标系的S
-
-            global_path.poses.push_back(this_pose_stamped);
-            global_path.header.frame_id = "gps";
         }
 
-        trajectory_points_ = planning_published_trajectory.trajectory_points;
-        std::cout << "first trajectory_points !!!!! : "
-                  << " x: " << trajectory_points_.at(14).x << " y: " << trajectory_points_.at(14).y
-                  << " v: " << trajectory_points_.at(14).v << std::endl;
+        trajectory_points_.clear();
+        if (Config_.FLAGS_if_use_local_planner) {
+            trajectory_points_ = planning_published_trajectory.trajectory_points;
+            // 发布最终control使用轨迹
+            nav_msgs::msg::Path pub_planed_traj_rviz;
+            pub_planed_traj_rviz.poses.clear();
+            pub_planed_traj_rviz.header.frame_id = "gps";
+            pub_planed_traj_rviz.header.stamp = this->get_clock()->now();
+            for (int i = 0; i < trajectory_points_.size(); ++i) {
+                geometry_msgs::msg::PoseStamped pose_stamp;
+                pose_stamp.header.frame_id = "gps";
+                pose_stamp.header.stamp = this->get_clock()->now();
+                pose_stamp.pose.position.x = trajectory_points_[i].x;
+                pose_stamp.pose.position.y = trajectory_points_[i].y;
+                pose_stamp.pose.position.z = 0;
+                pub_planed_traj_rviz.poses.push_back(pose_stamp);
+            }
+            nop_planed_traj_publisher->publish(pub_planed_traj_rviz);
+        } else {
+            auto reference_points_ptr = rl_.GetReferencePoints();
+            if (reference_points_ptr->size() == static_cast<size_t>(0)) {
+                std::cout << "dont have reference_points , return false ! " << std::endl;
+                return;
+            }
+            auto index = QueryNearestPointIndexByPositionOfRefLine(vehicle_state_.x, vehicle_state_.y);
+            std::cout << "control relline index is: " << index
+                      << " , x is : " << reference_points_ptr->at(index).get_x()
+                      << " , y is : " << reference_points_ptr->at(index).get_y() << std::endl;
+
+            nav_msgs::msg::Path pub_planed_traj_rviz;
+            pub_planed_traj_rviz.poses.clear();
+            pub_planed_traj_rviz.header.frame_id = "gps";
+            pub_planed_traj_rviz.header.stamp = this->get_clock()->now();
+            std::size_t max_index = reference_points_ptr->size() > static_cast<size_t>(max_index + 500)
+                                        ? static_cast<size_t>(max_index + 500)
+                                        : reference_points_ptr->size();
+            for (std::size_t i = index; i < max_index; ++i) {
+                // 生成control使用的轨迹
+                TrajectoryPointOri traj_point{0};
+                traj_point.a = 0.0;
+                traj_point.heading = reference_points_ptr->at(i).heading();
+                traj_point.kappa = reference_points_ptr->at(i).kappa();
+                traj_point.v = Config_.default_cruise_speed;
+                traj_point.x = reference_points_ptr->at(i).get_x();
+                traj_point.y = reference_points_ptr->at(i).get_y();
+                trajectory_points_.emplace_back(traj_point);
+                // 发布最终control使用轨迹
+                geometry_msgs::msg::PoseStamped pose_stamp;
+                pose_stamp.header.frame_id = "gps";
+                pose_stamp.header.stamp = this->get_clock()->now();
+                pose_stamp.pose.position.x = reference_points_ptr->at(i).get_x();
+                pose_stamp.pose.position.y = reference_points_ptr->at(i).get_y();
+                pose_stamp.pose.position.z = 0;
+                pub_planed_traj_rviz.poses.push_back(pose_stamp);
+            }
+            nop_planed_traj_publisher->publish(pub_planed_traj_rviz);
+        }
+
+        if (trajectory_points_.size() > static_cast<size_t>(0)) {
+            std::cout << "first trajectory_points !!!!! : "
+                      << " x: " << trajectory_points_.at(0).x << " y: " << trajectory_points_.at(0).y
+                      << " v: " << trajectory_points_.at(0).v << std::endl;
+        } else {
+            std::cout << "first trajectory_points_size is 0 " << std::endl;
+        }
     }
+
+    nop_debug_info_publisher_->publish(nop_debug_info_);
 }
 
-void VehicleControlPublisher::SetObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg) {
+void NopFunctionNode::SetObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg) {
     const auto &objects = msg->objects;
     // 存到AllObstacle
     AllObstacle.clear();
@@ -299,7 +353,7 @@ void VehicleControlPublisher::SetObjectArrayCallback(derived_object_msgs::msg::O
             // 中心点
             obs.centerpoint.position.x = objects.at(i).pose.position.x;
             obs.centerpoint.position.y = objects.at(i).pose.position.y;
-            obs.centerpoint.position.z = (double)0.0;    // 压缩二维
+            obs.centerpoint.position.z = (double)0.0;            // 压缩二维
 
             obs.obstacle_id = objects.at(i).id;                  // id
             obs.obstacle_type = objects.at(i).classification;    // 类型
@@ -326,7 +380,7 @@ void VehicleControlPublisher::SetObjectArrayCallback(derived_object_msgs::msg::O
             /*--------------------------------------不同形状有差别的信息-----------------------------------------*/
             // std::cout << "shape:" << msgs->objects[i].shape.type << std::endl;
 
-            if (obs.obstacle_type == 6)    // Car
+            if (obs.obstacle_type == 6)        // Car
             {
                 obs.pinnacle.poses.clear();    // 顶点暂时为空
                 obs.obstacle_radius =
@@ -336,7 +390,7 @@ void VehicleControlPublisher::SetObjectArrayCallback(derived_object_msgs::msg::O
                 obs.obstacle_length = objects.at(i).shape.dimensions.at(0);
                 obs.obstacle_width = objects.at(i).shape.dimensions.at(1);
                 obs.obstacle_height = objects.at(i).shape.dimensions.at(2);
-            } else if (obs.obstacle_type == 4)    // 圆形：Pedestrian
+            } else if (obs.obstacle_type == 4)                                 // 圆形：Pedestrian
             {
                 obs.obstacle_radius = objects.at(i).shape.dimensions.at(0);    // 半径
                 // 顶点
@@ -402,7 +456,7 @@ void VehicleControlPublisher::SetObjectArrayCallback(derived_object_msgs::msg::O
     std::cout << "AllObstacle size: " << AllObstacle.size() << " !!!!!!!" << std::endl;
 }
 
-void VehicleControlPublisher::ObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg) {
+void NopFunctionNode::ObjectArrayCallback(derived_object_msgs::msg::ObjectArray::SharedPtr msg) {
     const auto &objects = msg->objects;
     if (objects.size() != (size_t)0) {
         // std::cout << "find object" << std::endl;
@@ -436,7 +490,7 @@ void VehicleControlPublisher::ObjectArrayCallback(derived_object_msgs::msg::Obje
     }
 }
 
-void VehicleControlPublisher::GlobalPathPublishCallback()
+void NopFunctionNode::GlobalPathPublishCallback()
 /*'''**************************************************************************************
 - FunctionName: None
 - Function    : None
@@ -445,11 +499,44 @@ void VehicleControlPublisher::GlobalPathPublishCallback()
 - Comments    : None
 **************************************************************************************'''*/
 {
+    // publish for orininal points for rviz
+    // global_path.poses.clear();
+    // for (const auto &point : xy_points) {
+    //     this_pose_stamped.header.frame_id = "gps";
+    //     this_pose_stamped.header.stamp = this->get_clock()->now();
+    //     this_pose_stamped.pose.position.x = point.first;
+    //     this_pose_stamped.pose.position.y = point.second;
+    //     this_pose_stamped.pose.position.z = 0;
+    //     this_pose_stamped.pose.orientation.x = 0;
+    //     this_pose_stamped.pose.orientation.y = 0;
+    //     this_pose_stamped.pose.orientation.z = 0;
+    //     this_pose_stamped.pose.orientation.w = 0;    // 这里实际上是放的frenet坐标系的S
+
+    //     global_path.poses.push_back(this_pose_stamped);
+    // }
+
+    // publish for orininal points for rviz
+    global_path.poses.clear();
+    for (const auto &point : rl_.reference_points) {
+        this_pose_stamped.header.frame_id = "gps";
+        this_pose_stamped.header.stamp = this->get_clock()->now();
+        this_pose_stamped.pose.position.x = point.get_x();
+        this_pose_stamped.pose.position.y = point.get_y();
+        this_pose_stamped.pose.position.z = 0;
+        this_pose_stamped.pose.orientation.x = 0;
+        this_pose_stamped.pose.orientation.y = 0;
+        this_pose_stamped.pose.orientation.z = 0;
+        this_pose_stamped.pose.orientation.w = 0;    // 这里实际上是放的frenet坐标系的S
+
+        global_path.poses.push_back(this_pose_stamped);
+    }
+
+    global_path.header.frame_id = "gps";
     global_path.header.stamp = this->get_clock()->now();
     global_path_publisher_->publish(global_path);
 }
 
-VehicleControlPublisher::~VehicleControlPublisher() {}
+NopFunctionNode::~NopFunctionNode() {}
 /*'''**************************************************************************************
 - FunctionName: None
 - Function    : None
@@ -458,7 +545,7 @@ VehicleControlPublisher::~VehicleControlPublisher() {}
 - Comments    : None
 **************************************************************************************'''*/
 
-void VehicleControlPublisher::VehicleStatusCallback(carla_msgs::msg::CarlaEgoVehicleStatus::SharedPtr msg)
+void NopFunctionNode::VehicleStatusCallback(carla_msgs::msg::CarlaEgoVehicleStatus::SharedPtr msg)
 /*'''**************************************************************************************
 - FunctionName: None
 - Function    : None
@@ -471,7 +558,7 @@ void VehicleControlPublisher::VehicleStatusCallback(carla_msgs::msg::CarlaEgoVeh
     vehicle_state_.acceleration = msg->acceleration.linear.x;
 }
 
-double VehicleControlPublisher::PointDistanceSquare(const TrajectoryPointOri &point, const double x, const double y)
+double NopFunctionNode::PointDistanceSquare(const TrajectoryPointOri &point, const double x, const double y)
 /*'''**************************************************************************************
 - FunctionName: None
 - Function    : 两点之间的距离
@@ -485,7 +572,7 @@ double VehicleControlPublisher::PointDistanceSquare(const TrajectoryPointOri &po
     return dx * dx + dy * dy;
 }
 
-TrajectoryPointOri VehicleControlPublisher::QueryNearestPointByPosition(const double x, const double y)
+TrajectoryPointOri NopFunctionNode::QueryNearestPointByPosition(const double x, const double y)
 /*'''**************************************************************************************
 - FunctionName: None
 - Function    : None
@@ -504,18 +591,48 @@ TrajectoryPointOri VehicleControlPublisher::QueryNearestPointByPosition(const do
             index_min = i;
         }
     }
-    cout << "index: " << index_min << " ";
-    cout << "vehicle.x: " << x << " "
-         << "vehicle.y: " << y << endl;
-    cout << "trajectory_points.x: " << trajectory_points_[index_min].x << " "
-         << "trajectory_points.y: " << trajectory_points_[index_min].y;
+    std::cout << "index: " << index_min << " ";
+    std::cout << "vehicle.x: " << x << " "
+              << "vehicle.y: " << y << std::endl;
+    std::cout << "trajectory_points.x: " << trajectory_points_[index_min].x << " "
+              << "trajectory_points.y: " << trajectory_points_[index_min].y;
 
-    cout << endl;
+    std::cout << std::endl;
 
     return trajectory_points_[index_min];
 }
 
-void VehicleControlPublisher::odomCallback(nav_msgs::msg::Odometry::SharedPtr msg)
+double NopFunctionNode::PointDistanceSquareOfRefLine(const ReferencePoint &point, const double x, const double y) {
+    double dx = point.get_x() - x;
+    double dy = point.get_y() - y;
+    return dx * dx + dy * dy;
+}
+
+size_t NopFunctionNode::QueryNearestPointIndexByPositionOfRefLine(const double x, const double y) {
+    auto reference_points_ptr = rl_.GetReferencePoints();
+    double d_min = PointDistanceSquareOfRefLine(reference_points_ptr->at(0), x, y);
+    size_t index_min = 0;
+
+    for (size_t i = 1; i < reference_points_ptr->size(); ++i) {
+        double d_temp = PointDistanceSquareOfRefLine(reference_points_ptr->at(i), x, y);
+        if (d_temp < d_min) {
+            d_min = d_temp;
+            index_min = i;
+        }
+    }
+    // std::cout << "index: " << index_min << " ";
+
+    return index_min;
+}
+
+void NopFunctionNode::ImuCallback(sensor_msgs::msg::Imu::SharedPtr msg) {
+    vehicle_state_.ax = msg->linear_acceleration.x;
+    vehicle_state_.ay = msg->linear_acceleration.y;
+    rl_.gps_.accelx = vehicle_state_.ax;
+    rl_.gps_.accely = vehicle_state_.ay;
+}
+
+void NopFunctionNode::odomCallback(nav_msgs::msg::Odometry::SharedPtr msg)
 /*'''**************************************************************************************
 - FunctionName: None
 - Function    : None
@@ -545,23 +662,38 @@ void VehicleControlPublisher::odomCallback(nav_msgs::msg::Odometry::SharedPtr ms
                        3.6;                         // 本车速度
     vehicle_state_.heading = vehicle_state_.yaw;    // pose.orientation是四元数
 
+    // 将自车位置信息传给reference line
+    //    double x_cur = gps_.posx;    // 定位
+    // double y_cur = gps_.posy;
+    // double theta_cur = gps_.oriz;
+    // double kappa_cur = 0;
+    // double vx_cur = gps_.velx;
+    // double vy_cur = gps_.vely;
+    // double ax_cur = gps_.accelx;
+    // double ay_cur = gps_.accely;
+    rl_.gps_.posx = vehicle_state_.x;
+    rl_.gps_.posy = vehicle_state_.y;
+    rl_.gps_.oriz = vehicle_state_.heading;
+    rl_.gps_.velx = vehicle_state_.vx;
+    rl_.gps_.vely = vehicle_state_.vy;
+
     /* 将收到的定位信息发布出来,在rviz里显示历史轨迹 */
-    history_path.header.stamp = this->get_clock()->now();
-    history_path.header.frame_id = "gps";
+    // history_path.header.stamp = this->get_clock()->now();
+    // history_path.header.frame_id = "gps";
 
-    history_path_points.header.stamp = this->get_clock()->now();
-    history_path_points.header.frame_id = "gps";
-    history_path_points.pose.position.x = vehicle_state_.x;
-    history_path_points.pose.position.y = vehicle_state_.y;
-    history_path_points.pose.position.z = 0;
-    history_path_points.pose.orientation = msg->pose.pose.orientation;
-    history_path.poses.push_back(history_path_points);
+    // history_path_points.header.stamp = this->get_clock()->now();
+    // history_path_points.header.frame_id = "gps";
+    // history_path_points.pose.position.x = vehicle_state_.x;
+    // history_path_points.pose.position.y = vehicle_state_.y;
+    // history_path_points.pose.position.z = 0;
+    // history_path_points.pose.orientation = msg->pose.pose.orientation;
+    // history_path.poses.push_back(history_path_points);
 
-    if (history_path.poses.size() > 2000) {
-        vector<geometry_msgs::msg::PoseStamped>::iterator k = history_path.poses.begin();
-        history_path.poses.erase(k);
-    }
-    history_path_visualization_publisher->publish(history_path);
+    // if (history_path.poses.size() > 2000) {
+    //     vector<geometry_msgs::msg::PoseStamped>::iterator k = history_path.poses.begin();
+    //     history_path.poses.erase(k);
+    // }
+    // nop_planed_traj_publisher->publish(history_path);
 
     // 将世界坐标系和车辆坐标系的位置关系广播出来
     geometry_msgs::msg::TransformStamped transformStamped;
@@ -580,8 +712,8 @@ void VehicleControlPublisher::odomCallback(nav_msgs::msg::Odometry::SharedPtr ms
     tf_broadcaster_gps_vehicle->sendTransform(transformStamped);
 }
 
-// void VehicleControlPublisher::VehicleControlIterationCallback(carla_msgs::msg::CarlaStatus::SharedPtr msg)
-void VehicleControlPublisher::VehicleControlIterationCallback()
+// void NopFunctionNode::VehicleControlIterationCallback(carla_msgs::msg::CarlaStatus::SharedPtr msg)
+void NopFunctionNode::VehicleControlIterationCallback()
 /*'''**************************************************************************************
 - FunctionName: None
 - Function    : None
@@ -617,8 +749,8 @@ void VehicleControlPublisher::VehicleControlIterationCallback()
 
     acceleration_cmd = speed_pid_controller.Control(v_err, 0.05);
     // steer_cmd = yaw_pid_controller.Control(yaw_err, 0.01);
+    steer_cmd = 0.0;
 
-    steer_cmd = 0;
     control_cmd.header.stamp = this->now();
 
     if (acceleration_cmd >= 1.0) {
@@ -657,8 +789,8 @@ void VehicleControlPublisher::VehicleControlIterationCallback()
 
 // 非referenceLine成员函数
 // 已知顶点和中心点，将任何障碍物变成方形的二维平面，计算长和宽,并存储于Marker
-void VehicleControlPublisher::Turn_obstacles_into_squares(visualization_msgs::msg::Marker &marker,
-                                                          const Obstacle *Primitive_obstacle, const int id) {
+void NopFunctionNode::Turn_obstacles_into_squares(visualization_msgs::msg::Marker &marker,
+                                                  const Obstacle *Primitive_obstacle, const int id) {
     tf2::Quaternion myQuaternion;
     myQuaternion.setRPY((double)0.0, (double)0.0, (double)(Primitive_obstacle->obstacle_theta));
     marker.pose.orientation.set__w(myQuaternion.getW());
@@ -698,7 +830,7 @@ void VehicleControlPublisher::Turn_obstacles_into_squares(visualization_msgs::ms
 
 //     rclcpp::init(argc, argv);
 
-//     auto n = std::make_shared<VehicleControlPublisher>();
+//     auto n = std::make_shared<NopFunctionNode>();
 
 //     rclcpp::spin(n);
 

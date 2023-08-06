@@ -7,6 +7,7 @@ ament_add_gtest(${PROJECT_NAME}_test ${TEST_SRCS})
 find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(carla_msgs REQUIRED)
@@ -25,7 +26,7 @@ target_link_libraries(${PROJECT_NAME}_node
     ${PROJECT_NAME}_test
 )
 
-ament_target_dependencies(${PROJECT_NAME}_test std_msgs derived_object_msgs 
+ament_target_dependencies(${PROJECT_NAME}_test std_msgs derived_object_msgs sensor_msgs
 rclcpp geometry_msgs nav_msgs carla_msgs tf2 tf2_ros yaml-cpp visualization_msgs l5player_nop_msgs GTest)# ipopt z ssl uv uWS
 
 target_include_directories( ${PROJECT_NAME}_test PUBLIC

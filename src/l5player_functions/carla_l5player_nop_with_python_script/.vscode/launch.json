@@ -1,0 +1,35 @@
+// uint test
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            
+            // ------- chose one ------------//
+            // uint test
+            // "program": "${workspaceFolder}/../../../install/carla_l5player_nop_with_python_script/lib/carla_l5player_nop_with_python_script/carla_l5player_nop_with_python_script_test", //此路径更改为最终生成的可执行文件路径以及可执行文件名称
+            // "args": [
+            //     "--gtest_filter=NopFunctionNodeTest.TestCase1" //指定单元测试
+            // ],
+            // main func
+            "program": "${workspaceFolder}/../../../install/carla_l5player_nop_with_python_script/lib/carla_l5player_nop_with_python_script/carla_l5player_nop_with_python_script_node", //此路径更改为最终生成的可执行文件路径以及可执行文件名称
+            // ------- end chose ------------//
+
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false, //将此处的true改为false,不然他会调用系统的终端进行现实
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+        }
+    ]
+}
+

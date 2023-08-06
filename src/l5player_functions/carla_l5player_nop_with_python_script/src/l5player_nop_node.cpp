@@ -1,4 +1,4 @@
-#include "carla_l5player_pid_controller/vehicle_longitudinal_controller_pid.h"
+#include "l5player_nop/nop_function_node.h"
 #include "rclcpp/rclcpp.hpp"
 
 int main(int argc, char **argv)
@@ -14,9 +14,9 @@ int main(int argc, char **argv)
 
     rclcpp::init(argc, argv);
 
-    auto nop_node = std::make_shared<VehicleControlPublisher>();
+    auto nop_node = std::make_shared<NopFunctionNode>();
 
-    rclcpp::Rate loop_rate(100);
+    rclcpp::Rate loop_rate(10);
     while (rclcpp::ok()) {
         rclcpp::spin_some(nop_node);
 

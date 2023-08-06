@@ -29,6 +29,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Obstacle.msg"
   "msg/TrajectoryPoint.msg"
   "msg/Trajectory.msg"
+  "msg/NopFunctionDebugInfo.msg"
  )
 
 if(BUILD_TESTING)

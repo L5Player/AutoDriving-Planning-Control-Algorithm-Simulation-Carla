@@ -35,6 +35,7 @@ CSDN地址: https://blog.csdn.net/nn243823163/category_11685852.html?spm=1001.20
 3. python vehicle_gallery_aeb.py
 4. ros2 run carla_l5player_nop_with_python_script carla_l5player_nop_with_python_script_node
 5. 同时启动rviz: ros2 launch carla_l5player_nop_with_python_script nop_launch.py 
+6. build: colcon build --packages-select carla_l5player_nop_with_python_script
 <br><br>
 
 # AEB function scenario design and control

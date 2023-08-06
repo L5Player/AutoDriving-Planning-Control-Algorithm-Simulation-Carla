@@ -9,8 +9,12 @@ Param_Configs::Param_Configs() {
     // YAML::Node config =
     // YAML::LoadFile("src/l5player_functions/carla_l5player_nop_with_python_script/src/planning/config/configs.yaml");
     YAML::Node config = YAML::LoadFile(
-        "/home/bea20/l5player_premium/auto-driving-planning-control-algorithm-simulation-carla/src/l5player_functions/"
+        "/home/bea20/l5player_premium/auto-driving-planning-control-algorithm-simulation-carla_premium/src/"
+        "l5player_functions/"
         "carla_l5player_nop_with_python_script/src/planning/config/configs.yaml");
+
+    // general project config
+    FLAGS_if_use_local_planner = config["FLAGS_if_use_local_planner"].as<bool>();    // 是否使用规划器
 
     FLAGS_trajectory_time_resolution = config["FLAGS_trajectory_time_resolution"].as<double>();
     FLAGS_weight_target_speed = config["FLAGS_weight_target_speed"].as<double>();

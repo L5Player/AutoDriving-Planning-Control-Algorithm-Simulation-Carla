@@ -51,7 +51,7 @@ struct Point3d_s {
 };
 
 class referenceLine {
-    friend class VehicleControlPublisher;
+    friend class NopFunctionNode;
 
    public:
     referenceLine();

@@ -362,6 +362,7 @@ void referenceLine::referencePointsCalc(const nav_msgs::msg::Path& path_point) {
 
         if (!PathMatcher::ComputePathProfile(xy_points, &headings, &accumulated_s, &kappas, &dkappas)) {
             // ROS_WARN("rerferenceline generate failed!");
+            std::cout << "rerferenceline generate failed!" << std::endl;
         } else {
             for (size_t i = 0; i < xy_points.size(); ++i) {
                 // 创建ReferencePoint类
@@ -438,6 +439,7 @@ std::vector<TrajectoryPoint> referenceLine::plan_start_point(double& current_tim
         double lat_err = abs(d_err.transpose() * nor);
 
         std::size_t position_matched_index = pre_trajectory_.QueryNearestPoint({x_cur, y_cur});
+        std::cout << "pre_trajectory_ size : " << pre_trajectory_.size() << std::endl;
         std::cout << "poisition match point index: " << position_matched_index << std::endl;
         std::cout << "time match point index: " << index << std::endl;
         printf("pre_x_desire = %f m\n", pre_x_desire);    // 局部路径
