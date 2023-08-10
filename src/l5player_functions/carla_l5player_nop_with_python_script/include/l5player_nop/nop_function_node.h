@@ -6,7 +6,9 @@
 
 #include "common.h"
 #include "rclcpp/rclcpp.hpp"
-#include "pid_controller.h"
+#include "control/pid/pid_controller.h"
+#include "control/lqr/lqr_controller.h"
+#include "control/stanely/stanely_controller.h"
 #include <std_msgs/msg/bool.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -148,6 +150,12 @@ public:
     Eigen::MatrixXd routing_waypoints_; // 中心点坐标
     l5player::reference_line::referenceLine rl_;
     std::vector<Obstacle> AllObstacle;
+
+    // controler
+    std::unique_ptr<l5player::control::PIDController> pid_controller_longitudinal_;
+    std::unique_ptr<l5player::control::LqrController> lqr_controller_lateral_;
+    std::unique_ptr<l5player::control::StanleyController> stanely_controller_lateral_;
+    
 };
 
 #endif

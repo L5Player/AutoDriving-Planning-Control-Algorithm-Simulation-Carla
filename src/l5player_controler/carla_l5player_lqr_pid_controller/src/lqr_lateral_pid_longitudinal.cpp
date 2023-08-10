@@ -24,21 +24,28 @@ LQRControllerNode::LQRControllerNode()
 - Comments    : None
 **************************************************************************************'''*/
 {
-    this->declare_parameter<std::string>("roadmap_path", roadmap_path);    //读取路网文件名
-    this->declare_parameter<double>("target_speed", target_speed);         //读取目标速度
-    this->declare_parameter<double>("goal_tolerance", goalTolerance_);     //读取目标速度
-    this->declare_parameter<double>("speed_P", speed_P);                   //读取PID参数
-    this->declare_parameter<double>("speed_I", speed_I);
-    this->declare_parameter<double>("speed_D", speed_D);
+    // this->declare_parameter<std::string>("roadmap_path", roadmap_path);    // 读取路网文件名
+    // this->declare_parameter<double>("target_speed", target_speed);         // 读取目标速度
+    // this->declare_parameter<double>("goal_tolerance", goalTolerance_);     // 读取目标速度
+    // this->declare_parameter<double>("speed_P", speed_P);                   // 读取PID参数
+    // this->declare_parameter<double>("speed_I", speed_I);
+    // this->declare_parameter<double>("speed_D", speed_D);
 
-    this->get_parameter<std::string>("roadmap_path", roadmap_path);    //读取路网文件名
-    this->get_parameter<double>("target_speed", target_speed);         //读取目标速度
-    this->get_parameter<double>("goal_tolerance", goalTolerance_);     //读取目标速度
-    this->get_parameter<double>("speed_P", speed_P);                   //读取PID参数
-    this->get_parameter<double>("speed_I", speed_I);
-    this->get_parameter<double>("speed_D", speed_D);
+    // this->get_parameter<std::string>("roadmap_path", roadmap_path);    // 读取路网文件名
+    // this->get_parameter<double>("target_speed", target_speed);         // 读取目标速度
+    // this->get_parameter<double>("goal_tolerance", goalTolerance_);     // 读取目标速度
+    // this->get_parameter<double>("speed_P", speed_P);                   // 读取PID参数
+    // this->get_parameter<double>("speed_I", speed_I);
+    // this->get_parameter<double>("speed_D", speed_D);
 
-    //加载路网文件
+    double target_speed = 5.0;
+    double goal_tolerance = 0.5;
+    double speed_P = 0.16;
+    double speed_I = 0.02;
+    double speed_D = 0.01;
+
+    // 加载路网文件
+    std::string roadmap_path = "/home/bea20/l5player_premium/auto-driving-planning-control-algorithm-simulation-carla_premium/src/l5player_controler/carla_l5player_lqr_pid_controller/data/2022_09_29_16_27_08_ins_data_map_after_preprocess.csv";
     std::cout << "roadmap_path: " << roadmap_path << "  " << target_speed << std::endl;
     loadRoadmap(roadmap_path);
 
@@ -173,16 +180,16 @@ void LQRControllerNode::loadRoadmap(const std::string& roadmap_path)
 **************************************************************************************'''*/
 {
     // 读取参考线路径
-    std::ifstream infile(roadmap_path, ios::in);    //将文件流对象与文件连接起来
-    assert(infile.is_open());                       //若失败,则输出错误消息,并终止程序运行
+    std::ifstream infile(roadmap_path, ios::in);    // 将文件流对象与文件连接起来
+    assert(infile.is_open());                       // 若失败,则输出错误消息,并终止程序运行
 
     while (getline(infile, _line)) {
         std::cout << _line << std::endl;
-        //解析每行的数据
+        // 解析每行的数据
         stringstream ss(_line);
         string _sub;
         vector<string> subArray;
-        //按照逗号分隔
+        // 按照逗号分隔
         while (getline(ss, _sub, ',')) {
             subArray.push_back(_sub);
         }
@@ -322,8 +329,8 @@ void LQRControllerNode::VehicleControllerIterationCallback()
 **************************************************************************************'''*/
 {
     ControlCmd cmd;
-    if (!firstRecord_) {    //有定位数据开始控制
-        //小于容忍距离，车辆速度设置为0
+    if (!firstRecord_) {    // 有定位数据开始控制
+        // 小于容忍距离，车辆速度设置为0
         if (pointDistance(goal_point, vehicleState_.x, vehicleState_.y) < goalTolerance_) {
             targetSpeed_ = 0;
             isReachGoal_ = true;
@@ -366,12 +373,12 @@ void LQRControllerNode::VehicleControllerIterationCallback()
 
         vehicle_control_publisher->publish(control_cmd);
 
-    vehicle_control_target_velocity.velocity = target_point_.v / 3.6;
-    vehicle_control_target_velocity_publisher->publish(vehicle_control_target_velocity);
-    cout << "control_cmd.steer: " << control_cmd.steer << endl;
-    cout << "~~ vehicleState_.v: " << vehicleState_.velocity * 3.6 << ", target_point_.v: " << target_point_.v << ", v_err: " << v_err << endl;
-    cout << "yaw_err: " << yaw_err << endl;
-}
+        vehicle_control_target_velocity.velocity = target_point_.v / 3.6;
+        vehicle_control_target_velocity_publisher->publish(vehicle_control_target_velocity);
+        cout << "control_cmd.steer: " << control_cmd.steer << endl;
+        cout << "~~ vehicleState_.v: " << vehicleState_.velocity * 3.6 << ", target_point_.v: " << target_point_.v << ", v_err: " << v_err << endl;
+        cout << "yaw_err: " << yaw_err << endl;
+    }
 }
 int main(int argc, char** argv) {
     RCLCPP_INFO(LOGGER, "Initializa Node~");

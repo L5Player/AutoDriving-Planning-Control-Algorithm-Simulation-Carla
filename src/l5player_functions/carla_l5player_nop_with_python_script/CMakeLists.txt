@@ -105,7 +105,9 @@ if(BUILD_TESTING)
   ament_add_gtest(${PROJECT_NAME}_test ${TEST_SRCS} 
                                                     # src/l5player_nop_node.cpp
                                                     src/l5player_nop_main.cpp 
-                                                    src/pid_controller.cpp 
+                                                    src/control/lqr/lqr_controller.cpp
+                                                    src/control/pid/pid_controller.cpp 
+                                                    src/control/stanely/stanley_controller.cpp
                                                     src/reference_line.cpp
                                                     src/planning/common/box2d.cc
                                                     src/planning/common/Config.cc

@@ -16,7 +16,7 @@ static const rclcpp::Logger LOGGER = rclcpp::get_logger("carla_l5player_pid_new_
 // Controller
 l5player::control::PIDController yaw_pid_controller(0.5, 0.3, 0.1);    // 转向角pid
 // l5player::control::PIDController speed_pid_controller(0.206, 0.0206, 0.515);    // 速度pid Kp Ki Kd
-l5player::control::PIDController speed_pid_controller(0.16, 0.02, 0.01);    // 速度pid Kp Ki Kd
+// l5player::control::PIDController speed_pid_controller(0.16, 0.02, 0.01);    // 速度pid Kp Ki Kd
 
 NopFunctionNode::NopFunctionNode()
     : Node("carla_l5player_nop_with_python_script")
@@ -32,6 +32,14 @@ NopFunctionNode::NopFunctionNode()
     first_record_ = true;
     cnt = 0;
     qos = 10;
+
+    // controler
+    pid_controller_longitudinal_ = std::make_unique<l5player::control::PIDController>(0.16, 0.02, 0.01);
+    lqr_controller_lateral_ = std::make_unique<l5player::control::LqrController>();
+    lqr_controller_lateral_->LoadControlConf();
+    lqr_controller_lateral_->Init();
+    stanely_controller_lateral_ = std::make_unique<l5player::control::StanleyController>();
+    stanely_controller_lateral_->LoadControlConf();
 
     switch (which_planners) {
         case 0:
@@ -132,8 +140,8 @@ NopFunctionNode::NopFunctionNode()
         this->create_wall_timer(500ms, std::bind(&NopFunctionNode::GlobalPathPublishCallback, this));
 
     // timer for control
-    vehicle_control_iteration_timer_ =
-        this->create_wall_timer(50ms, std::bind(&NopFunctionNode::VehicleControlIterationCallback, this));
+    // vehicle_control_iteration_timer_ =
+    //     this->create_wall_timer(50ms, std::bind(&NopFunctionNode::VehicleControlIterationCallback, this));
 
     // Initialize the transform broadcaster
     tf_broadcaster_gps_vehicle = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -175,6 +183,7 @@ void NopFunctionNode::NopRunOnce() {
     }
     nop_rl_points_publisher_->publish(pub_rl_points_rviz);
 
+    // plan
     if (reference_points_ptr->size() > 0) {
         double current_time = this->get_clock()->now().seconds();
         std::vector<TrajectoryPoint> stitching_trajectory = rl_.plan_start_point(current_time);
@@ -339,6 +348,9 @@ void NopFunctionNode::NopRunOnce() {
         }
     }
 
+    // control
+    VehicleControlIterationCallback();
+
     nop_debug_info_publisher_->publish(nop_debug_info_);
 }
 
@@ -478,7 +490,7 @@ void NopFunctionNode::ObjectArrayCallback(derived_object_msgs::msg::ObjectArray:
     double dist_y = abs(object_y - vehicle_state_.y);
     const double object_dist = sqrt(pow(dist_x, (double)2.0) + pow(dist_y, (double)2.0));
     double reaction_time = AEB_BRAKE_REACTION_TIME;
-    double safe_dist = vehicle_state_.v * reaction_time +
+    double safe_dist = (vehicle_state_.v / (double)3.6) * reaction_time +
                        (double)0.5 * vehicle_state_.acceleration * pow(AEB_BRAKE_REACTION_TIME, (double)2.0);
 
     if (safe_dist > object_dist) {
@@ -726,11 +738,12 @@ void NopFunctionNode::VehicleControlIterationCallback()
 
     target_point_ = this->QueryNearestPointByPosition(vehicle_state_.x, vehicle_state_.y);
 
-    std::cout << "target_point_.v : " << target_point_.v << "  target_point_.x: " << target_point_.x
-              << "  target_point_.y: " << target_point_.y << std::endl;
+    std::cout << "CONTROL_INFO , target_point_.v_mps : " << target_point_.v
+              << "  vehicle_state_.v_kph : " << vehicle_state_.v << " x: " << target_point_.x
+              << " y: " << target_point_.y << std::endl;
 
-    double v_err = target_point_.v - vehicle_state_.v;                  // 速度误差
-    double yaw_err = vehicle_state_.heading - target_point_.heading;    // 横摆角误差
+    double v_err = target_point_.v - (vehicle_state_.v / (double)3.6);    // 速度误差
+    double yaw_err = vehicle_state_.heading - target_point_.heading;      // 横摆角误差
 
     if (yaw_err > M_PI / 6) {
         yaw_err = M_PI / 6;
@@ -746,10 +759,30 @@ void NopFunctionNode::VehicleControlIterationCallback()
         // cout << "yaw_err: " << yaw_err << endl;
         // cout << "control_cmd.target_wheel_angle: " << control_cmd.target_wheel_angle << endl;
     }
+    TrajectoryData planning_published_trajectory;
+    planning_published_trajectory.trajectory_points.clear();
+    for (size_t i = 0; i < trajectory_points_.size(); i++) {
+        TrajectoryPointOri point = trajectory_points_.at(i);
+        planning_published_trajectory.trajectory_points.emplace_back(point);
+    }
 
-    acceleration_cmd = speed_pid_controller.Control(v_err, 0.05);
+    vehicle_state_.velocity = vehicle_state_.v;
+    ControlCmd cmd;
+
+    // use lqr lat
+    if (true) {
+        lqr_controller_lateral_->ComputeControlCommand(this->vehicle_state_, planning_published_trajectory, cmd);
+    }
+    // use stanely lat
+    if (false) {
+        stanely_controller_lateral_->ComputeControlCmd(this->vehicle_state_, this->planning_published_trajectory, cmd);
+    }
+
+    acceleration_cmd = pid_controller_longitudinal_->Control(v_err, 0.05);
     // steer_cmd = yaw_pid_controller.Control(yaw_err, 0.01);
     steer_cmd = 0.0;
+
+    std::cout << "acceleration_cmd : " << acceleration_cmd << std::endl;
 
     control_cmd.header.stamp = this->now();
 
@@ -767,17 +800,23 @@ void NopFunctionNode::VehicleControlIterationCallback()
         control_cmd.throttle = acceleration_cmd;
         control_cmd.brake = 0;
     }
+
+    if (isnan(cmd.steer_target)) {
+        control_cmd.steer = 0;
+    } else {
+        control_cmd.steer = cmd.steer_target;
+    }
+    std::cout << "steer_target : " << control_cmd.steer << std::endl;
     // std::cout << "acceleration_cmd: " << acceleration_cmd << std::endl;
-    control_cmd.steer = steer_cmd;
     control_cmd.gear = 1;
     control_cmd.reverse = false;
     control_cmd.hand_brake = false;
     control_cmd.manual_gear_shift = false;
 
-    if (if_aeb_active_ == true) {
-        control_cmd.brake = -AEB_BRAKE_DECELERATION;
-        control_cmd.throttle = 0;
-    }
+    // if (if_aeb_active_ == true) {
+    //     control_cmd.brake = -AEB_BRAKE_DECELERATION;
+    //     control_cmd.throttle = 0;
+    // }
 
     vehicle_control_publisher->publish(control_cmd);
 
